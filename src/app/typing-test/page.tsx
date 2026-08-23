@@ -10,7 +10,7 @@ import Link from "next/link";
 function TypingTestInner() {
   const sp = useSearchParams();
   const dur = parseInt(sp.get("duration") || "30", 10);
-  const duration = [15,30,60].includes(dur) ? dur as 15|30|60 : 30;
+  const duration = [15,30,60,300].includes(dur) ? dur as 15|30|60|300 : 30;
   const modeParam = sp.get("mode");
   const [idx, setIdx] = useState(0);
   const [result, setResult] = useState<TypingResult | null>(null);
@@ -21,10 +21,10 @@ function TypingTestInner() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-black">Typing Speed Test — {duration}s</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Measure WPM, accuracy, per-key errors. <Link href="/tes-mengetik" className="underline">Tes mengetik Indonesia →</Link></p>
-        <div className="mt-2 flex gap-2">
-          {[15,30,60].map(d => <Link key={d} href={`/typing-test?duration=${d}`} className={`rounded-full px-3 py-1 text-sm ${d===duration?"bg-black text-white":"border bg-white dark:bg-zinc-900"}`}>{d}s</Link>)}
+        <h1 className="text-2xl font-black">Typing Speed Test — {duration >= 60 ? `${duration/60} min` : `${duration}s`} {duration===300 && "(Endurance)"}</h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Measure WPM, accuracy, per-key errors. <Link href="/tes-mengetik" className="underline">Tes mengetik Indonesia →</Link> • <Link href="/typing-test/5-minute" className="underline">5-min endurance →</Link></p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {[15,30,60,300].map(d => <Link key={d} href={`/typing-test?duration=${d}`} className={`rounded-full px-3 py-1 text-sm ${d===duration?"bg-black text-white":"border bg-white dark:bg-zinc-900"}`}>{d===300?"5 min":`${d}s`}</Link>)}
           <button onClick={()=>{setResult(null); setIdx(i=>i+1);}} className="rounded-full border bg-white px-3 py-1 text-sm dark:bg-zinc-900">↻ New passage</button>
         </div>
       </div>

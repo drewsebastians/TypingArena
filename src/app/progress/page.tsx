@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { loadTypingHistory, loadDictationHistory, clearHistory, getStreak, getXP } from "@/lib/history";
 import SkillProfile from "@/components/SkillProfile";
+import ErrorHeatmap from "@/components/ErrorHeatmap";
 import { levelFromXP } from "@/lib/skillMatrix";
+import { track, getQueue } from "@/lib/analytics";
 import type { TypingResult, DictationResult } from "@/lib/types";
 
 export default function ProgressPage() {
@@ -17,7 +19,7 @@ export default function ProgressPage() {
     setXp(getXP());
     setStreak(getStreak());
   };
-  useEffect(refresh, []);
+  useEffect(()=>{ refresh(); track("history_viewed", {}); }, []);
   const lvl = levelFromXP(xp);
 
   // simple SVG sparkline for WPM
@@ -32,6 +34,7 @@ export default function ProgressPage() {
 
       <div className="mt-4 grid gap-4">
         <SkillProfile />
+        {typing[0] && <ErrorHeatmap result={typing[0]} />}
 
         <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
           <div className="flex items-center justify-between">
@@ -76,6 +79,14 @@ export default function ProgressPage() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="font-bold">Analytics queue (local, blueprint §16)</h3>
+          <div className="mt-2 max-h-40 overflow-auto rounded bg-zinc-950 p-2 font-mono text-xs text-emerald-300">
+            <pre>{JSON.stringify(getQueue().slice(-8), null, 2)}</pre>
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">Events: landing_view, test_start, typing_test_complete, dictation_complete, focus_lost, paste_detected, etc. Swap adapter to PostHog/GA4 via env.</div>
         </div>
 
         <div className="flex gap-2">

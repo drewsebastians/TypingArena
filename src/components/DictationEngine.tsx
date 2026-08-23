@@ -4,6 +4,7 @@ import type { DictationItem, DictationResult } from "@/lib/types";
 import { normalizeTextForScoring, strictSimilarityPercent, wordAccuracy } from "@/lib/scoring";
 import { speak, stopSpeak, rateForSpeed } from "@/lib/tts";
 import { saveDictationResult } from "@/lib/history";
+import { track } from "@/lib/analytics";
 
 export default function DictationEngine({ item, onComplete }: { item: DictationItem; onComplete?: (r: DictationResult) => void }) {
   const [typed, setTyped] = useState("");
@@ -17,10 +18,13 @@ export default function DictationEngine({ item, onComplete }: { item: DictationI
 
   useEffect(() => {
     setStartedAt(Date.now());
+    track("dictation_start", { language: item.language, difficulty: item.difficulty, speed: item.speed });
     return () => stopSpeak();
-  }, [item.id]);
+  }, [item.id, item.language, item.difficulty, item.speed]);
 
   const handlePlay = () => {
+    const isReplay = replay > 0;
+    track(isReplay ? "audio_replay" : "audio_play", { language: item.language });
     setIsPlaying(true);
     setReplay(r => r + 1);
     // approximate replay seconds add
@@ -58,6 +62,8 @@ export default function DictationEngine({ item, onComplete }: { item: DictationI
     setSubmitted(res);
     onComplete?.(res);
     stopSpeak();
+    track("dictation_complete", { strict: strict, normalized, wordAccuracy: wAcc, replayCount: replay, language: item.language });
+    track("dictation_submit", { language: item.language });
   };
 
   if (submitted) {

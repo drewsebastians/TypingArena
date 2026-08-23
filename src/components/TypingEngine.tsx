@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { buildTypingResult, calcWpm } from "@/lib/scoring";
 import type { CorpusItem, TypingResult } from "@/lib/types";
 import { saveTypingResult } from "@/lib/history";
+import { track } from "@/lib/analytics";
 
 export default function TypingEngine({
   item,
@@ -49,6 +50,11 @@ export default function TypingEngine({
     setFinished(true);
     onComplete?.(res);
     if (timerRef.current) window.clearInterval(timerRef.current);
+    track("typing_test_complete", { wpm: res.wpm, accuracy: res.accuracy, durationSec, language: item.language, mode: item.mode, integrity: res.integrity });
+    if (res.integrity !== "ranked") track("session_unranked", { reason: res.integrity, pasteDetected, focusLost });
+    if (pasteDetected) track("paste_detected", { durationSec });
+    // burst detection handled in scoring; emit if flagged
+    if (res.integrity === "flagged") track("suspicious_burst_detected", { wpm: res.wpm });
   }, [target, durationSec, item.language, item.mode, pasteDetected, focusLost, onComplete]);
 
   // timer
@@ -72,14 +78,14 @@ export default function TypingEngine({
   // focus/blur integrity
   useEffect(() => {
     const onBlur = () => {
-      if (started && !finished) setFocusLost(c => c + 1);
+      if (started && !finished) { setFocusLost(c => c + 1); track("focus_lost", { durationSec }); }
     };
     window.addEventListener("blur", onBlur);
     document.addEventListener("visibilitychange", () => { if (document.hidden) onBlur(); });
     return () => {
       window.removeEventListener("blur", onBlur);
     };
-  }, [started, finished]);
+  }, [started, finished, durationSec]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -91,6 +97,8 @@ export default function TypingEngine({
       keystrokesRef.current = [];
       setElapsedMs(0);
       finishedRef.current = false;
+      track("typing_test_start", { durationSec, language: item.language, mode: item.mode });
+      track("test_start", { type: "typing", durationSec });
     }
     // record keystroke diff
     const prev = typed;
@@ -118,6 +126,7 @@ export default function TypingEngine({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     setPasteDetected(true);
+    track("paste_detected", { source: "typing" });
   };
 
   const handleReset = () => {

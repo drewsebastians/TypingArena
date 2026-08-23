@@ -1,6 +1,8 @@
 "use client";
 import type { TypingResult } from "@/lib/types";
 import Link from "next/link";
+import ErrorHeatmap from "./ErrorHeatmap";
+import { track } from "@/lib/analytics";
 
 export default function ResultCard({ result, onNext }: { result: TypingResult; onNext?: () => void }) {
   const shareText = `I typed ${result.wpm} WPM at ${result.accuracy}% accuracy on TypingArena (${result.durationSec}s ${result.language}) — try to beat me!`;
@@ -47,9 +49,12 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => { if (navigator.share) navigator.share({ title: "TypingArena", text: shareText }).catch(()=>{}); else navigator.clipboard.writeText(shareText); }} className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">Share result</button>
-        <Link href="/dictation" className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700">Test listening accuracy →</Link>
+      <ErrorHeatmap result={result} />
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button onClick={() => { track("share_card_created", { wpm: result.wpm }); if (navigator.share) navigator.share({ title: "TypingArena", text: shareText }).catch(()=>{}); else navigator.clipboard.writeText(shareText); track("share_clicked", { wpm: result.wpm }); }} className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">Share result</button>
+        <Link href="/dictation" onClick={()=>track("next_recommended_start", { from: "typing", to: "dictation" })} className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700">Test listening accuracy →</Link>
+        <Link href="/friends" className="rounded-full border border-violet-300 bg-violet-50 px-5 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-100">Challenge friend →</Link>
         <Link href="/daily-arena" className="rounded-full border border-emerald-300 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Join Daily Arena</Link>
         {onNext && <button onClick={onNext} className="rounded-full bg-zinc-100 px-5 py-2 text-sm font-semibold dark:bg-zinc-800">Next exercise</button>}
       </div>

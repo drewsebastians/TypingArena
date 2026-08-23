@@ -8,11 +8,11 @@ import { ENGLISH_CORPUS } from "@/lib/content/english";
 import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
 import type { CorpusItem, TypingResult } from "@/lib/types";
 
-const quickDurations = [15, 30, 60] as const;
+const quickDurations = [15, 30, 60, 300] as const;
 
 export default function Home() {
   const [lang, setLang] = useState<"en" | "id">("en");
-  const [duration, setDuration] = useState<15 | 30 | 60>(30);
+  const [duration, setDuration] = useState<15 | 30 | 60 | 300>(30);
   const [item, setItem] = useState<CorpusItem>(ENGLISH_CORPUS[0]);
   const [result, setResult] = useState<TypingResult | null>(null);
   const [mode, setMode] = useState<CorpusItem["mode"]>("sprint");
@@ -55,7 +55,7 @@ export default function Home() {
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900">
           {quickDurations.map(d => (
-            <button key={d} onClick={()=>setDuration(d)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${duration===d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>{d}s</button>
+            <button key={d} onClick={()=>setDuration(d as any)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${duration===d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>{d===300?"5 min":`${d}s`}</button>
           ))}
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900">
@@ -93,10 +93,13 @@ export default function Home() {
         <div className="w-full max-w-3xl grid gap-3 sm:grid-cols-3 text-sm">
           {[
             { href: "/typing-test", title: "Typing Speed Test", desc: "15/30/60s WPM & accuracy" },
-            { href: "/typing-test/1-minute", title: "1 Minute Typing Test", desc: "Standard 60s benchmark" },
-            { href: "/tes-mengetik", title: "Tes Mengetik Cepat", desc: "Tes kecepatan mengetik Indonesia" },
+            { href: "/typing-test/1-minute", title: "1 Minute Typing Test", desc: "Standard 60s" },
+            { href: "/typing-test/5-minute", title: "5 Minute Test", desc: "Endurance 300s" },
+            { href: "/tes-mengetik", title: "Tes Mengetik Cepat", desc: "Tes kecepatan mengetik ID" },
             { href: "/dictation/english", title: "English Dictation", desc: "Listen → type exactly" },
             { href: "/dictation/indonesian", title: "Dikte Bahasa Indonesia", desc: "Latihan dikte" },
+            { href: "/noise-challenge", title: "Noise Challenge", desc: "Dictation in cafe/street" },
+            { href: "/friends", title: "Friend Challenge", desc: "Shareable link battle" },
             { href: "/transcription-practice", title: "Transcription Practice", desc: "30–120s real clips" },
             { href: "/data-entry-test", title: "Data Entry Test", desc: "Numbers, dates, codes" },
             { href: "/punctuation-typing-test", title: "Punctuation Test", desc: "Precision mode" },

@@ -8,6 +8,8 @@ const nav = [
   { href: "/typing-test", label: "Sprint" },
   { href: "/dictation", label: "Dictation" },
   { href: "/transcription-practice", label: "Transcription" },
+  { href: "/noise-challenge", label: "Noise" },
+  { href: "/friends", label: "Friends" },
   { href: "/daily-arena", label: "Daily Arena" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/progress", label: "Progress" },
