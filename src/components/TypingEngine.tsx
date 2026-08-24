@@ -1,154 +1,286 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { buildTypingResult, calcWpm } from "@/lib/scoring";
-import type { CorpusItem, TypingResult } from "@/lib/types";
+// Typing engine v2 — timed tests that behave like timed tests.
+//
+// Guarantees (verified by tests + E2E):
+//  1. Timer starts on the first printable key and the test ends ONLY at the
+//     configured duration. Completing one passage never ends a timed test —
+//     the stream replenishes endlessly from the reviewed corpus.
+//  2. Accuracy is computed over the typed scope only; untouched future text is
+//     never counted as an error.
+//  3. Corrected / uncorrected errors and correction latency come from precise
+//     event tracking (CorrectionTracker), not string heuristics.
+//  4. Paste attempts are blocked and flagged; focus loss is counted with
+//     de-duplication; impossible bursts are detected.
+//
+// Rendering is state-driven: refs hold accumulators that are only touched in
+// event handlers / timers, never read during render.
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { assembleTypingMetrics, accumulatePerKey, accumulateBigram } from "@/lib/scoring";
+import { CorrectionTracker } from "@/lib/corrections";
+import { classifyIntegrity, detectBurst } from "@/lib/integrity";
+import { TestStream } from "@/lib/stream";
 import { saveTypingResult } from "@/lib/history";
 import { track } from "@/lib/analytics";
+import type { BigramStat, CorpusItem, Language, Mode, PerKeyStat, TypingResult } from "@/lib/types";
+
+export interface TypingEngineProps {
+  /** Pool of reviewed corpus items used to build the continuous stream. */
+  pool: CorpusItem[];
+  language: Language;
+  mode: Mode;
+  durationSec: number;
+  /** Stable exercise identity for versioning (e.g. daily challenge ref). */
+  exerciseId: string;
+  exerciseVersion?: string;
+  challengeDate?: string;
+  onComplete?: (r: TypingResult) => void;
+}
+
+const WINDOW_BEFORE = 48;
+const WINDOW_AFTER = 110;
+
+function newId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+interface EntryView {
+  expected: string;
+  typed: string;
+}
 
 export default function TypingEngine({
-  item,
+  pool,
+  language,
+  mode,
   durationSec,
+  exerciseId,
+  exerciseVersion = "v2",
+  challengeDate,
   onComplete,
-}: {
-  item: CorpusItem;
-  durationSec: number;
-  onComplete?: (r: TypingResult) => void;
-}) {
-  const target = item.text;
-  const [typed, setTyped] = useState("");
+}: TypingEngineProps) {
+  const [entries, setEntries] = useState<EntryView[]>([]);
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [pasteDetected, setPasteDetected] = useState(false);
   const [focusLost, setFocusLost] = useState(0);
-  const [wpmLive, setWpmLive] = useState(0);
+  const [pasteFlag, setPasteFlag] = useState(false);
 
-  const startTimeRef = useRef<number | null>(null);
-  const keystrokesRef = useRef<Array<{ time: number; key: string; correct: boolean; isBackspace: boolean }>>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<number | null>(null);
+  // Accumulators — mutated in handlers/timers only.
+  const startedRef = useRef(false);
   const finishedRef = useRef(false);
+  const startAtRef = useRef<number | null>(null);
+  const trackerRef = useRef(new CorrectionTracker());
+  const perKeyRef = useRef<Record<string, PerKeyStat>>({});
+  const bigramRef = useRef<Record<string, BigramStat>>({});
+  const keystrokeTimesRef = useRef<number[]>([]);
+  const focusLostRef = useRef(0);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const lastFocusSignalRef = useRef(0);
 
-  const remainingMs = Math.max(0, durationSec * 1000 - elapsedMs);
-  const remainingSec = Math.ceil(remainingMs / 1000);
+  // Deterministic per-session stream (stable identity across renders).
+  const [stream] = useState(
+    () => new TestStream(pool, `${exerciseId}:${mode}:${language}:${exerciseVersion}`),
+  );
 
-  const finish = useCallback((finalTyped: string, elapsed: number) => {
+  const finish = useCallback(() => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    const res = buildTypingResult({
-      target,
-      typed: finalTyped,
-      elapsedMs: elapsed,
-      durationSec,
-      language: item.language,
-      mode: item.mode,
-      keystrokes: keystrokesRef.current,
-      pasteDetected,
-      focusLostCount: focusLost,
-    });
-    saveTypingResult(res);
     setFinished(true);
-    onComplete?.(res);
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    track("typing_test_complete", { wpm: res.wpm, accuracy: res.accuracy, durationSec, language: item.language, mode: item.mode, integrity: res.integrity });
-    if (res.integrity !== "ranked") track("session_unranked", { reason: res.integrity, pasteDetected, focusLost });
-    if (pasteDetected) track("paste_detected", { durationSec });
-    // burst detection handled in scoring; emit if flagged
-    if (res.integrity === "flagged") track("suspicious_burst_detected", { wpm: res.wpm });
-  }, [target, durationSec, item.language, item.mode, pasteDetected, focusLost, onComplete]);
+    const elapsed = Math.min(durationSec * 1000, Date.now() - (startAtRef.current ?? Date.now()));
+    setElapsedMs(elapsed);
 
-  // timer
+    const burstDetected = detectBurst(keystrokeTimesRef.current);
+    const verdict = classifyIntegrity({
+      pasteDetected: pasteFlag,
+      focusLostCount: focusLostRef.current,
+      burstDetected,
+      durationSec,
+    });
+    const metrics = assembleTypingMetrics({
+      language,
+      mode,
+      configuredDurationSec: durationSec,
+      elapsedMs: elapsed,
+      tracker: trackerRef.current,
+      perKey: perKeyRef.current,
+      bigrams: bigramRef.current,
+      burstDetected,
+      pasteDetected: pasteFlag,
+      focusLostCount: focusLostRef.current,
+      exerciseId,
+      exerciseVersion,
+      id: newId(),
+      timestamp: Date.now(),
+    });
+
+    const result: TypingResult = {
+      id: newId(),
+      mode,
+      language,
+      durationSec,
+      elapsedMs: elapsed,
+      grossWpm: metrics.grossWpm,
+      netWpm: metrics.netWpm,
+      cpm: metrics.cpm,
+      accuracy: metrics.accuracy,
+      correctChars: metrics.correctChars,
+      typedChars: metrics.typedChars,
+      correctedErrors: metrics.corrections.correctedErrors,
+      uncorrectedErrors: metrics.corrections.uncorrectedErrors,
+      rawErrorEvents: metrics.corrections.rawErrorEvents,
+      backspaceActions: metrics.corrections.backspaceActions,
+      immediateCorrections: metrics.corrections.immediateCorrections,
+      correctionLatencyMsAvg: metrics.corrections.correctionLatencyMsAvg,
+      perKeyErrors: perKeyRef.current,
+      bigramErrors: bigramRef.current,
+      pasteDetected: pasteFlag,
+      focusLostCount: focusLostRef.current,
+      integrity: verdict.state,
+      integrityReasons: verdict.reasons,
+      exerciseId,
+      exerciseVersion,
+      scoringVersion: metrics.scoringVersion,
+      challengeDate,
+      challengeVersion: challengeDate ? "v2" : undefined,
+      timestamp: Date.now(),
+    };
+    saveTypingResult(result);
+    onComplete?.(result);
+
+    track("typing_test_complete", {
+      wpm: result.grossWpm,
+      accuracy: result.accuracy,
+      durationSec,
+      language,
+      mode,
+      integrity: result.integrity,
+    });
+    if (result.integrity !== "ranked") track("session_unranked", { reason: verdict.reasons.join(",") });
+    if (pasteFlag) track("paste_detected", { source: "typing", durationSec });
+    if (burstDetected) track("suspicious_burst_detected", { wpm: result.grossWpm });
+  }, [durationSec, language, mode, exerciseId, exerciseVersion, challengeDate, onComplete, pasteFlag]);
+
+  // Timer — ends the test exactly at the configured duration.
   useEffect(() => {
     if (!started || finished) return;
     timerRef.current = window.setInterval(() => {
-      const now = Date.now();
-      const start = startTimeRef.current!;
-      const elapsed = now - start;
+      const elapsed = Date.now() - (startAtRef.current ?? Date.now());
       setElapsedMs(elapsed);
-      setWpmLive(calcWpm(typed.length, elapsed));
       if (elapsed >= durationSec * 1000) {
-        finish(typed, durationSec * 1000);
+        if (timerRef.current) window.clearInterval(timerRef.current);
+        finish();
       }
     }, 100);
-    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [started, finished, typed, durationSec, finish]);
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    };
+  }, [started, finished, durationSec, finish]);
 
-  // keep live wpm in sync when typed changes but timer not ticking yet? handled by interval.
-
-  // focus/blur integrity
+  // Focus-loss integrity with 1s de-duplication between blur/visibilitychange.
   useEffect(() => {
+    if (!started || finished) return;
     const onBlur = () => {
-      if (started && !finished) { setFocusLost(c => c + 1); track("focus_lost", { durationSec }); }
+      const now = Date.now();
+      if (now - lastFocusSignalRef.current < 1000) return;
+      lastFocusSignalRef.current = now;
+      focusLostRef.current += 1;
+      setFocusLost(focusLostRef.current);
+      track("focus_lost", { durationSec });
+    };
+    const onVis = () => {
+      if (document.hidden) onBlur();
     };
     window.addEventListener("blur", onBlur);
-    document.addEventListener("visibilitychange", () => { if (document.hidden) onBlur(); });
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [started, finished, durationSec]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value;
-    // prevent overshoot beyond target + 20%
-    if (val.length > target.length + 20) val = val.slice(0, target.length + 20);
-    if (!started) {
-      setStarted(true);
-      startTimeRef.current = Date.now();
-      keystrokesRef.current = [];
-      setElapsedMs(0);
-      finishedRef.current = false;
-      track("typing_test_start", { durationSec, language: item.language, mode: item.mode });
-      track("test_start", { type: "typing", durationSec });
-    }
-    // record keystroke diff
-    const prev = typed;
-    if (val.length > prev.length) {
-      // added char(s) — could be paste (multiple)
-      const added = val.slice(prev.length);
-      if (added.length > 1) setPasteDetected(true);
-      for (let i = 0; i < added.length; i++) {
-        const idx = prev.length + i;
-        const exp = target[idx] ?? "";
-        const got = added[i];
-        keystrokesRef.current.push({ time: Date.now() - (startTimeRef.current ?? Date.now()), key: got, correct: exp === got, isBackspace: false });
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (finishedRef.current) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const now = () => Date.now() - (startAtRef.current ?? Date.now());
+
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      if (!startedRef.current || trackerRef.current.length === 0) return;
+      const removed = trackerRef.current.backspace(now());
+      if (removed) {
+        keystrokeTimesRef.current.push(now());
+        setEntries(trackerRef.current.finalEntries().map((x) => ({ expected: x.expected, typed: x.typed })));
       }
-    } else if (val.length < prev.length) {
-      keystrokesRef.current.push({ time: Date.now() - (startTimeRef.current ?? Date.now()), key: "Backspace", correct: false, isBackspace: true });
+      return;
     }
-    setTyped(val);
-    // auto finish when correctly completed early
-    if (val === target) {
-      const elapsed = Date.now() - (startTimeRef.current ?? Date.now());
-      setElapsedMs(elapsed);
-      finish(val, elapsed);
+
+    // Printable single characters only (desktop-first; IME composition ignored).
+    if (e.key.length !== 1) return;
+    e.preventDefault();
+    const wallNow = Date.now();
+    if (!startedRef.current) {
+      startedRef.current = true;
+      startAtRef.current = wallNow;
+      setStarted(true);
+      track("typing_test_start", { durationSec, language, mode, exerciseId });
+      track("test_start", { type: "typing", durationSec, mode });
     }
+    const time = wallNow - startAtRef.current!;
+    const expected = stream.charAt(entries.length);
+    const typed = e.key;
+    const buffer = trackerRef.current.finalEntries();
+    const prevTop = buffer.length > 0 ? buffer[buffer.length - 1] : null;
+    trackerRef.current.push(expected, typed, time);
+    accumulatePerKey(perKeyRef.current, expected, typed);
+    accumulateBigram(bigramRef.current, prevTop ? prevTop.expected : null, { expected, typed }, prevTop);
+    keystrokeTimesRef.current.push(time);
+    if (typed !== expected) {
+      track("keystroke_error", { expected: expected === " " ? "space" : expected, got: typed === " " ? "space" : typed });
+    }
+    setEntries(trackerRef.current.finalEntries().map((x) => ({ expected: x.expected, typed: x.typed })));
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    setPasteDetected(true);
-    track("paste_detected", { source: "typing" });
+    e.preventDefault();
+    setPasteFlag(true);
+    track("paste_detected", { source: "typing-input" });
   };
 
-  const handleReset = () => {
-    setTyped("");
+  const reset = useCallback(() => {
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    startedRef.current = false;
+    finishedRef.current = false;
+    startAtRef.current = null;
+    trackerRef.current = new CorrectionTracker();
+    perKeyRef.current = {};
+    bigramRef.current = {};
+    keystrokeTimesRef.current = [];
+    focusLostRef.current = 0;
+    setEntries([]);
     setStarted(false);
     setFinished(false);
     setElapsedMs(0);
-    setPasteDetected(false);
     setFocusLost(0);
-    keystrokesRef.current = [];
-    startTimeRef.current = null;
-    finishedRef.current = false;
-    if (timerRef.current) window.clearInterval(timerRef.current);
+    setPasteFlag(false);
     setTimeout(() => inputRef.current?.focus(), 0);
-  };
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // render per-char coloring
-  const chars = target.split("");
+  // ---- rendering (pure, from state) ---------------------------------------
+  const pos = entries.length;
+  const viewStart = Math.max(0, pos - WINDOW_BEFORE);
+  const viewText = stream.slice(viewStart, WINDOW_BEFORE + WINDOW_AFTER);
+  const chars = [...viewText];
+  const liveWpm = started && elapsedMs > 750 ? Math.round(pos / 5 / (elapsedMs / 60_000)) : 0;
+  const remainingSec = Math.max(0, Math.ceil((durationSec * 1000 - elapsedMs) / 1000));
+  const liveAcc = pos > 0 ? Math.round((entries.filter((x) => x.typed === x.expected).length / pos) * 100) : 100;
 
   return (
     <div className="w-full max-w-3xl">
@@ -157,78 +289,85 @@ export default function TypingEngine({
         <div className="flex items-center gap-6">
           <div>
             <div className="text-xs uppercase tracking-widest text-zinc-500">Time</div>
-            <div className={`text-2xl font-mono font-bold ${remainingSec <= 5 && started && !finished ? "text-red-600" : ""}`}>{remainingSec}s</div>
+            <div className={`text-2xl font-mono font-bold ${remainingSec <= 5 && started && !finished ? "text-red-600" : ""}`} aria-live="off">{remainingSec}s</div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-zinc-500">WPM</div>
-            <div className="text-2xl font-mono font-bold">{started ? wpmLive : 0}</div>
+            <div className="text-2xl font-mono font-bold">{liveWpm}</div>
           </div>
           <div>
+            <div className="text-xs uppercase tracking-widest text-zinc-500">Accuracy</div>
+            <div className="text-2xl font-mono font-bold">{liveAcc}%</div>
+          </div>
+          <div className="hidden sm:block">
             <div className="text-xs uppercase tracking-widest text-zinc-500">Mode</div>
-            <div className="text-sm font-semibold">{item.mode} • {item.language === "en" ? "English" : "Indonesia"} • {durationSec}s</div>
+            <div className="text-sm font-semibold capitalize">{mode} • {language === "en" ? "English" : "Indonesia"} • {durationSec}s</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {pasteDetected && <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">paste detected — flagged</span>}
+          {pasteFlag && <span role="status" className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">paste blocked — flagged</span>}
           {focusLost > 0 && <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">focus lost ×{focusLost}</span>}
-          <button onClick={handleReset} className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Reset (Tab)</button>
+          <button onClick={reset} className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Restart</button>
         </div>
       </div>
 
-      {/* Text area — ad-safe, no layout shift */}
+      {/* Stream area — no ads ever inside this region */}
       <div
         onClick={() => inputRef.current?.focus()}
         className="relative cursor-text rounded-xl border border-zinc-200 bg-white p-6 leading-8 dark:border-zinc-800 dark:bg-zinc-900"
-        role="textbox"
-        aria-label="typing area"
+        aria-label={`Typing test, ${durationSec} seconds. Click or press any key to begin.`}
         tabIndex={0}
-        onKeyDown={e => { if (e.key === "Tab") { e.preventDefault(); handleReset(); } }}
       >
-        <p className="font-mono text-lg tracking-wide">
+        <p className="break-words font-mono text-lg leading-9 tracking-wide" aria-hidden={true}>
           {chars.map((ch, i) => {
-            const typedChar = typed[i];
+            const globalIdx = viewStart + i;
             let cls = "text-zinc-400";
-            if (typedChar == null) cls = "text-zinc-400";
-            else if (typedChar === ch) cls = "text-emerald-600 dark:text-emerald-400";
-            else cls = "bg-red-100 text-red-700 underline decoration-red-500 dark:bg-red-950 dark:text-red-300";
-            const isCaret = i === typed.length && started && !finished;
+            if (globalIdx < pos) {
+              const entry = entries[globalIdx];
+              cls = entry && entry.typed === entry.expected
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "bg-red-100 text-red-700 underline decoration-red-500 dark:bg-red-950 dark:text-red-300";
+            }
+            const isCaret = globalIdx === pos && started && !finished;
             return (
-              <span key={i} className={`${cls} ${isCaret ? "border-l-2 border-black dark:border-white -ml-px animate-pulse" : ""}`}>
+              <span key={i} className={`${cls} ${isCaret ? "animate-pulse border-l-2 border-black dark:border-white" : ""}`}>
                 {ch}
               </span>
             );
           })}
-          {typed.length > target.length && (
-            <span className="bg-red-100 text-red-700">{typed.slice(target.length)}</span>
-          )}
         </p>
-        {/* hidden input captures keystrokes */}
         <input
           ref={inputRef}
-          value={typed}
-          onChange={handleChange}
+          value=""
+          onChange={() => undefined}
+          onKeyDown={handleKeyDown}
           onPaste={handlePaste}
+          onDrop={(e) => e.preventDefault()}
           disabled={finished}
           className="absolute inset-0 h-full w-full opacity-0"
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
-          aria-label="type here"
+          aria-label="Type here — the timer starts with your first keystroke"
         />
         {!started && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="rounded-full bg-black px-4 py-1.5 text-sm font-semibold text-white shadow dark:bg-white dark:text-black">Click & start typing — timer starts on first key</span>
+            <span className="rounded-full bg-black px-4 py-1.5 text-sm font-semibold text-white shadow dark:bg-white dark:text-black">
+              Start typing — timer runs for the full {durationSec}s
+            </span>
           </div>
         )}
         {finished && (
-          <div className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">Test finished — see results below ↓</div>
+          <div role="status" className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+            Time! Results below.
+          </div>
         )}
       </div>
 
       <div className="mt-2 flex justify-between text-xs text-zinc-500">
-        <span>Tip: Focus stays locked. Ads never appear inside this area.</span>
-        <span>Press Tab to reset</span>
+        <span>Passages continue until time runs out — pace yourself.</span>
+        <span>Restart abandons the attempt (not saved).</span>
       </div>
     </div>
   );

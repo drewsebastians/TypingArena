@@ -1,26 +1,24 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "5 Minute Typing Test — Extended WPM & Endurance",
-  description: "5 minute typing test for endurance and consistency. Measure sustained WPM, accuracy drift, and weak keys. Free, no login, per-key heatmap.",
-};
+"use client";
+import { Suspense } from "react";
+import TypingTestPanel from "@/components/TypingTestPanel";
+import SkillProfile from "@/components/SkillProfile";
+import AdSlot from "@/components/AdSlot";
 
 export default function FiveMinutePage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">5 Minute Typing Test</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">Endurance mode — consistency matters more than bursts. Track WPM decay and late-stage errors.</p>
-      <div className="mt-4 rounded-xl border-2 border-black p-6 text-center dark:border-white">
-        <div className="text-5xl font-black">5:00</div>
-        <div className="text-sm text-zinc-500">Standard long-form endurance</div>
-        <Link href="/typing-test?duration=300" className="mt-4 inline-block rounded-full bg-black px-8 py-3 font-bold text-white dark:bg-white dark:text-black">Start 5-Minute Test →</Link>
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="text-center text-2xl font-black">5 Minute Typing Test</h1>
+      <p className="mx-auto mt-1 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
+        A true endurance test — 300 seconds on the clock with continuous passages. Pace yourself.
+      </p>
+      <div className="mt-8">
+        <Suspense fallback={<div className="py-16 text-center text-sm text-zinc-500">Loading…</div>}>
+          <TypingTestPanel initialDuration={300} />
+        </Suspense>
       </div>
-      <div className="mt-3 rounded-xl border bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">MVP note: 5-minute uses sprint corpus looped. In production, dedicated long-form passages with sustained difficulty curve.</div>
-      <div className="mt-4 flex gap-2 text-sm">
-        <Link href="/typing-test?duration=60" className="underline">1 minute</Link>
-        <Link href="/typing-test?duration=30" className="underline">30s sprint</Link>
-        <Link href="/progress" className="underline">View progress</Link>
+      <div className="mt-10 flex flex-col items-center gap-6">
+        <SkillProfile />
+        <AdSlot slot="typing-5min" />
       </div>
     </div>
   );

@@ -1,20 +1,22 @@
 "use client";
-import { useState } from "react";
-import DictationEngine from "@/components/DictationEngine";
-import { DICTATION_EN } from "@/lib/content/dictation";
+import DictationPanel from "@/components/DictationPanel";
+import AdSlot from "@/components/AdSlot";
+import SkillProfile from "@/components/SkillProfile";
 
-export default function DictationEnglish() {
-  const [idx, setIdx] = useState(0);
-  const item = DICTATION_EN[idx % DICTATION_EN.length];
+export default function EnglishDictationPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">English Dictation Practice</h1>
-      <p className="text-sm text-zinc-600">Listen → type exactly. Tests listening accuracy + punctuation + capitalization.</p>
-      <div className="mt-3 flex gap-2">
-        <button onClick={()=>setIdx(i=>i+1)} className="rounded-full border bg-white px-4 py-1.5 text-sm">Next sentence</button>
-        <span className="self-center text-xs text-zinc-500">{idx+1} / {DICTATION_EN.length} • {item.difficulty}</span>
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="text-center text-2xl font-black">English Dictation Test</h1>
+      <p className="mx-auto mt-1 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
+        Listen to real audio clips and type exactly what you hear — punctuation and capitalization count.
+      </p>
+      <div className="mt-8">
+        <DictationPanel initialLanguage="en" lockLanguage />
       </div>
-      <div className="mt-4 flex justify-center"><DictationEngine key={item.id+idx} item={item} /></div>
+      <div className="mx-auto mt-10 flex max-w-3xl flex-col items-center gap-6">
+        <SkillProfile />
+        <AdSlot slot="dictation-en" />
+      </div>
     </div>
   );
 }

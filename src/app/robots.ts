@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/config";
 
 export const dynamic = "force-static";
 
@@ -8,9 +9,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/progress"], // private history non-indexable per blueprint §22.2
+        disallow: ["/progress"], // private history is never indexed
       },
     ],
-    sitemap: "https://typingarena.example/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

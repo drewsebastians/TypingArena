@@ -3,190 +3,219 @@
 > **Train and prove how accurately and quickly you can turn what you see or hear into text.**
 > One arena for typing, listening, dictation and transcription performance.
 
-**Research verdict:** STRONG GO — #1 bootstrap priority, 9/10 feasibility (blueprint 23 Aug 2026). Free-first, ads-supported, **no runtime AI inference**. Small SEO-led team.
-
-Home: https://github.com/drewsebastians/TypingArena
+Free-first • anonymous practice • **no AI inference at runtime** • English + Bahasa Indonesia.
 
 ---
 
-## Strategic Thesis
+## What this is
 
-Do not build another WPM site. Build a **human input-performance arena** that unifies:
+Not another WPM calculator: a human input-performance arena combining
+**timed typing → dictation → transcription → analytics → deterministic adaptive
+practice → shared competition**.
 
-`Visual typing → Dictation → Transcription → Analytics → Adaptive practice → Daily competition → Repeat`
+- Every exercise comes from a reviewed, versioned corpus. Nothing is generated
+  at request time.
+- Scoring is deterministic, documented and versioned (`docs/ADR-003-scoring.md`).
+- Dictation/transcription play **static audio files** generated during
+  development; the runtime never calls any TTS/ASR/LLM service (CI enforces it).
 
-**Moat:** measurable human skill + persistent skill history + audio/transcription progression + competition. If AI performs the task, it defeats the purpose — AI is a cheating vector, not a substitute.
+## Status labels used in this README
 
-**Decisive KPI:** Do dictation/transcription create more retention & identity than plain WPM? If users only use generic typing test, it's a commodity. If audio modes drive repeat behavior, it's defensible.
-
----
-
-## MVP (shipped)
-
-- [x] **Sprint** 15/30/60s typing test — `src/components/TypingEngine.tsx:1`
-- [x] **WPM / accuracy / CPM** — standard `WPM = chars/5/min` — `src/lib/scoring.ts:1`
-- [x] **Per-key + bigram error profile** + correction latency — `src/lib/scoring.ts:30`
-- [x] **English + Indonesian corpora** — `src/lib/content/english.ts:1`, `src/lib/content/indonesian.ts:1`
-- [x] **Dictation** (EN/ID, strict + normalized + word accuracy, TTS via Web Speech API, replay count/ratio) — `src/components/DictationEngine.tsx:1`, `src/lib/scoring.ts:60`
-- [x] **Transcription Sprint** 30–120s + replay analytics — `src/app/transcription-practice/page.tsx:1`
-- [x] **Numbers & Data** mode — `src/app/data-entry-test/page.tsx:1`
-- [x] **Punctuation / Copy Pro** — `src/app/punctuation-typing-test/page.tsx:1`
-- [x] **Deterministic adaptation** `priority = weakness + freshness + variety` — `src/lib/skillMatrix.ts:1`
-- [x] **Skill profile** (weak keys/bigrams, XP/level, streak, recommendation) — `src/components/SkillProfile.tsx:1`
-- [x] **History** anonymous localStorage, optional username after value — `src/lib/history.ts:1`
-- [x] **Daily Arena** (same challenge for all, deterministic daily seed) — `src/lib/daily.ts:1`, `src/app/daily-arena/page.tsx:1`
-- [x] **Async leaderboard** + integrity signals (paste, burst, focus) — `src/lib/scoring.ts:120`, `src/app/leaderboard/page.tsx:1`
-- [x] **Share card** (Web Share API) — `src/components/ResultCard.tsx:1`
-- [x] **SEO surface** tool-led routes (see Site Architecture below) + sitemap/robots — `src/app/sitemap.ts:1`
-- [x] **Ad-safe layout** — ads never inside active test, reserved slots — `src/app/globals.css:20`
-- [x] **Accessibility** keyboard operable, focus visible, stable layout
+**COMPLETE** — works as described, with tests. **PARTIAL** — core works, named
+gaps remain. **DEFERRED** — deliberately not built yet. Nothing in this README
+is claimed "shipped" that is actually local-only or simulated.
 
 ---
 
-## Site Architecture (SEO blueprint §14)
+## Implemented now
+
+### Typing modes — COMPLETE
+- Sprint 15/30/60s + **true 5-minute endurance**: tests run the full clock over an
+  endless deterministic stream assembled from the reviewed corpus — finishing a
+  passage never ends a timed test.
+- Gross/net WPM, CPM, typed-scope accuracy (untouched text is never penalized).
+- Per-key & bigram error profiles from event-level tracking (alignment-robust),
+  error heatmap, correction latency, corrected vs uncorrected errors.
+- Copy Pro / punctuation precision and Numbers & Data pools (EN+ID).
+- Integrity signals: paste blocked + flagged, impossible-burst detection,
+  de-duplicated focus-loss counting → ranked / practice / flagged.
+
+### Dictation — COMPLETE (audio library PARTIAL)
+- Real static audio clips, English + Indonesian, strict + normalized scoring,
+  word accuracy, punctuation accuracy, effective WPM.
+- Playback analytics measured from media events: initial play ≠ replay,
+  actual seconds heard, pause count, seek count, replay ratio against real duration.
+- Noise Challenge layers filtered noise at four honest difficulty tiers.
+
+### Transcription Sprint — COMPLETE (library PARTIAL)
+- Multi-clip EN/ID workspace, full metrics incl. active typing time,
+  corrections, replay ratio; persistent history; cross-mode recommendations.
+
+### Progress & adaptation — COMPLETE
+- Anonymous local history (typing/dictation/transcription), streaks on the
+  Asia/Jakarta product day (one qualifying activity per day, all modes count),
+  XP/levels across modes.
+- Multi-skill matrix: typing weaknesses, dictation-derived listening weakness
+  (score + replay reliance), transcription depth — feeding a transparent
+  deterministic next-exercise recommendation.
+
+### Shared competition — COMPLETE code path / needs credentials to activate
+Architecture: **static frontend + Supabase direct client + RLS**
+(`docs/ADR-001-deployment.md`, schema in `supabase/migrations/0001_init.sql`):
+- Ranked leaderboard by mode/language/duration; Daily Arena shared board per
+  product date; one ranked daily attempt per user per day.
+- Cross-device friend challenges backed by central records (unguessable ids,
+  immutable payload, result comparison) — links work on other devices/browsers.
+- Optional magic-link accounts, public username separated from private email,
+  one-shot migration of anonymous history, account-data deletion.
+- **Without credentials the app degrades honestly**: setup notices instead of
+  boards, no fabricated players ever.
+
+### Production plumbing — COMPLETE
+- Config-driven canonical URLs (sitemap, robots, metadataBase); private
+  `/progress` non-indexed; localized EN/ID tool pages; every indexed page is a
+  working tool.
+- Consent-gated PostHog/GA4 adapter with the blueprint event dictionary;
+  gracefully inert without configuration or consent.
+- Reserved ad slots outside active tasks; provider loads only when configured.
+- Privacy page, data export, one-click deletion of local/account data.
+
+---
+
+## Site architecture (SEO)
 
 ```
-/                          → hero + instant test + discovery
-/typing-test               → 15/30/60s (query ?duration=15|30|60)
-/typing-test/1-minute      → canonical 60s page
-/typing-test/indonesian    → ID typing pool
-/tes-mengetik               → localized landing (Indonesia wedge)
-/dictation                 → hub (EN/ID toggle)
-/dictation/english         → EN listening drills
-/dictation/indonesian      → ID dikte
-/transcription-practice    → MVP+ 30s+ clips + replay ratio
-/data-entry-test           → numbers/dates/codes
-/punctuation-typing-test   → precision mode
-/daily-arena               → daily standardized challenge
-/leaderboard               → async, filterable
-/progress                  → history, sparkline, streak, skill matrix
+/                          hero + instant test + discovery
+/typing-test               15/30/60s (?duration=&mode=)
+/typing-test/1-minute      canonical 60s page
+/typing-test/5-minute      endurance 300s
+/typing-test/indonesian    ID pool
+/tes-mengetik              localized Indonesian landing
+/dictation                 hub (EN/ID toggle)
+/dictation/english | /dictation/indonesian
+/transcription-practice    multi-clip sprint
+/data-entry-test           numbers/dates/codes
+/punctuation-typing-test   precision mode
+/noise-challenge           noise-tiered dictation
+/daily-arena               today's shared challenge
+/leaderboard               ranked results (real backend required)
+/friends                   cross-device challenges
+/progress                  PRIVATE — noindex
+/privacy                   data practices
 ```
 
-Every indexable page **is** the tool (Google people-first, no thin programmatic explosion).
+## Tech stack
 
----
+Next.js 16 (App Router, TypeScript strict, static export) · Tailwind 4 ·
+Vitest (+ Testing Library) · Playwright · optional Supabase · optional PostHog.
 
-## Tech Stack
-
-- **Next.js 16** App Router + TypeScript (static export, SEO-first)
-- **Tailwind CSS 4**
-- **No DB for MVP** — localStorage for history/leaderboard/daily (deterministic daily seed `src/lib/daily.ts:5`). Production swap: add Postgres/Supabase for leaderboard + auth.
-- **No runtime AI/ASR** — reference transcript comparison + Web Speech API TTS for audio (no inference cost, `src/lib/tts.ts:1`)
-
----
-
-## Scoring Spec (blueprint §9)
-
-| Metric | Formula |
-|---|---|
-| **Gross WPM** | `typedChars / 5 / minutes` — `src/lib/scoring.ts:7` |
-| **CPM** | `typedChars / minutes` |
-| **Accuracy** | `correct chars / max(targetLen, typedLen)` |
-| **Per-key** | exposures, errors, rate per char |
-| **Bigram** | exposures/errors per expected 2-char sequence |
-| **Dictation strict** | exact incl. punct/case via Levenshtein similarity |
-| **Dictation normalized** | case-insensitive, punct-removed similarity |
-| **Word accuracy** | correct positional words / ref word count |
-| **Replay ratio** | `totalAudioSecondsPlayed / clipDuration` |
-| **Integrity** | `flagged` if paste or burst (>10 chars/400ms) or focusLost>2; else `practice` if focusLost>0 else `ranked` |
-
-Normalization version `v1.0.0` stored per result for reproducibility. Past scores never silently incomparable.
-
----
-
-## Deterministic Adaptation (blueprint §10)
-
-```
-Keystrokes → Error stream → per-key/bigram stats → Skill matrix → Exercise selector → Next challenge
-```
-
-Selectors implemented in `src/lib/skillMatrix.ts:48`:
-```
-Exercise Priority = weakness relevance + freshness + variety + target difficulty
-```
-- Weak key threshold `>15%` error rate, weak bigram `>25%` with `>2` exposures
-- Rotation avoids monotony; every 3rd session nudges to audio
-
-Example insights (rule-generated, no LLM):
-- “You miss apostrophes more often”
-- “Accuracy drops on number-heavy tests”
-- “Bigram `th` needs practice”
-
----
-
-## Content Strategy
-
-- Curated corpora with metadata: language, mode, char/word count, punct types, difficulty, source, tags — `src/lib/types.ts:4`
-- **No runtime generation** — all exercises reviewed; deterministic variety only
-- Indonesian audio: Web Speech `id-ID` TTS for MVP; Common Voice CC0 verified source noted for future ingestion (must re-verify license/version before import, blueprint §11.2)
-
----
-
-## Getting Started
+## Getting started
 
 ```bash
 npm install
-npm run dev      # http://localhost:3000
-npm run build    # production build — verifies scoring, types, static generation
-npm run lint
+npm run dev          # http://localhost:3000 — everything works locally
+npm run lint && npm run typecheck && npm test
+npm run build        # static export to out/
+npm run serve:static # inspect production output on :4173
+npm run test:e2e     # Playwright against out/ (build first; browsers: npx playwright install chromium)
+npm run generate:audio  # regenerate static clips (requires: pip install edge-tts)
 ```
 
-Node 20+ required. No env vars for MVP.
+### Environment variables
 
----
+Copy `.env.example` → `.env.local`. All values are optional; see the file for
+each variable's effect. Public values only — nothing secret belongs here.
 
-## Analytics Event Dictionary (blueprint §16)
+### Shared competition setup
 
-Capture in production analytics (PostHog/GA4). MVP currently local-only.
+1. Create a free Supabase project.
+2. Run `supabase/migrations/0001_init.sql` in the SQL editor (schema, RLS,
+   public views, helper functions).
+3. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` and rebuild.
+4. Schedule `select purge_expired_challenges();` daily (pg_cron or equivalent).
+5. Enable magic-link auth (Auth → Email). Disable confirmations if you want
+   frictionless first sign-in.
 
-`landing_view`, `test_start`, `typing_test_start`, `typing_test_complete`, `keystroke_error`, `correction`, `paste_detected`, `dictation_start`, `audio_play`, `audio_replay`, `dictation_complete`, `transcription_start`, `transcription_complete`, `account_created`, `history_viewed`, `next_recommended_start`, `streak_incremented`, `daily_arena_start`, `daily_arena_complete`, `leaderboard_view`, `friend_challenge_created`, `share_card_created`, `focus_lost`, `suspicious_burst_detected`, `session_unranked`
+## Scoring spec (summary)
 
-**North star:** `meaningful completed sessions per returning user`
-**Thesis ratio:** `audio-mode repeat users / typing-only repeat users`
+| Metric | Definition |
+|---|---|
+| Gross WPM | typedChars / 5 / minutes |
+| Net WPM | (typedChars − uncorrectedErrors) / 5 / minutes |
+| Accuracy | correctChars / typedChars — typed scope only |
+| Errors | raw events = corrected + uncorrected (precise event pairing) |
+| Correction latency | wrong-entry creation → its removing backspace |
+| Per-key / bigram | exposure-weighted, accumulated at keystroke time |
+| Dictation scores | strict (case+punct aligned), normalized (v2 rules), word alignment, punctuation alignment |
+| Replay ratio | actual played seconds ÷ real clip duration |
 
----
+Full semantics + rationale: `docs/ADR-003-scoring.md`. Every result stores
+exercise/scoring/normalization/challenge versions for reproducibility.
 
-## Monetization (blueprint §15)
+## Testing
 
-Phase 1 **Free + ads** (this MVP): static slots on result/discovery pages only. Never inside active typing/audio area; no interstitial during timed task; no autoplay audio.
+- **Unit/component (Vitest, 100+ assertions):** alignment robustness, WPM math,
+  normalization (Unicode NFC, apostrophes, Indonesian), correction semantics,
+  burst detection, integrity classification, Jakarta-day boundaries, daily
+  determinism, endless stream guarantees, playback reducer, streak logic,
+  skill-matrix derivation, corpus/audio-manifest consistency, plus engine
+  behaviour: timer starts on first key, does NOT finish when a passage ends,
+  finishes exactly at duration, paste flagging, version recording.
+- **E2E (Playwright, Chromium desktop + mobile):** full-clock sprints, 5-minute
+  HUD, untouched-text accuracy, paste blocking, static audio resolution (EN/ID),
+  transcription flow, honest degradation of daily/leaderboard/friends without a
+  backend, robots/sitemap hygiene, keyboard reachability.
+- **Production guard:** CI fails if `speechSynthesis` appears in any bundle or a
+  placeholder domain leaks into output.
 
-Phase 2 Ad-free premium + advanced analytics. Phase 3 Teams/schools/employer assessment (only after retention proven).
+## Analytics & measurement
 
----
+`track()` feeds the consent-gated PostHog/GA4 adapters plus a capped local debug
+queue. Event dictionary lives in `src/lib/analytics.ts` (acquisition, mode
+start/complete, conversion, integrity, sharing, competition). With PostHog
+configured: D1/D7/D30 retention, typing→dictation→transcription funnels, Daily
+Arena participation, share rate, suspected-cheat rate are all measurable.
+North star: meaningful completed sessions per returning user; strategic ratio:
+audio-mode repeat users vs typing-only repeat users.
 
-## Validation Gates (blueprint §17)
+## Monetization stance
 
-- **Test A commodity acquisition:** SEO landing → test start → completion
-- **Test B cross-mode conversion:** typing → dictation start rate
-- **Test C retention lift:** D1/D7/D30 audio users vs typing-only
-- **Test D transcription depth:** replay analytics, completion, repeat
-- **Test E competition loop:** daily participation, repeat, sharing
+Free + reserved ad slots (result/discovery zones only; never inside active
+tasks, no autoplay audio). Provider activates via `NEXT_PUBLIC_ADSENSE_CLIENT`.
+Ad-free premium architecture remains trivially feasible.
 
-**GO** if audio modes show adoption + distinct repeat + multi-mode profile usage. **STOP/PIVOT** if sessions end after generic WPM and audio ignored — then remain SEO typing property, don't over-build multiplayer.
+## Privacy summary
 
----
+Anonymous-first; minimal storage; no raw keystroke streams (summarized error
+profiles only); public username decoupled from private email; consent-gated
+analytics; export + delete controls on `/progress`; friend challenge records
+expire after 30 days. Details: `/privacy`.
+
+## Honest limitations
+
+- Shared features require Supabase credentials; until configured they show
+  setup notices rather than pretending to work.
+- Anti-cheat is heuristic; the DB hides non-ranked rows but cannot prove a
+  human typed. Not certification.
+- Account row deletion (auth.users) requires Dashboard/support action; all
+  product data deletes via the app.
+- Audio uses dev-time neural narration — see licensing note in
+  `docs/LICENSES.md`.
 
 ## Roadmap
 
-- **MVP+ next:** error heatmap, friend challenges, streak polish, 5-min mode, sound/noise challenge
-- **Later:** ranked seasons, real-time multiplayer (only after Daily Arena proves demand), career tracks, custom test creation, transcription libraries, tournament API
-
----
-
-## Privacy & Compliance (blueprint §19)
-
-- Anonymous play first; account optional after value
-- Minimal data; no raw keystroke stream stored beyond summarized metrics; leaderboard username separate from private history
-- Private history non-indexable (`robots.ts`)
-- No child data collection in MVP wedge (teens/adults focus avoids COPPA/ID child complexities)
-- Audio license recorded per exercise; CC0/common-voice re-verified per release
-
----
+- **MVP+:** larger clip libraries, career tracks (data-entry/admin), heatmap
+  polish, streak refinements.
+- **Later (deferred):** ranked seasons, real-time multiplayer, classroom rooms,
+  custom test creation, tournament API — each gated behind retention evidence.
 
 ## Contributing
 
-PRs welcome. Keep runtime deterministic. Add new corpus items with full metadata + difficulty calibration.
+PRs welcome. Keep runtime deterministic: reviewed corpora with derived
+metadata, static assets with license records, no runtime AI of any kind.
+Run `npm run lint && npm run typecheck && npm test` before submitting.
 
 ## License
 
-ISC — curated corpora are original for MVP. Swap in CC0 Common Voice subset with documented source/version before scaling audio.
+Code: ISC. Content: original works for TypingArena (see `docs/LICENSES.md`
+for audio provenance and re-verification requirements).

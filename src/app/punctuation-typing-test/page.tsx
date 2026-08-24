@@ -1,21 +1,24 @@
 "use client";
-import { useState } from "react";
-import TypingEngine from "@/components/TypingEngine";
-import ResultCard from "@/components/ResultCard";
-import { ENGLISH_CORPUS } from "@/lib/content/english";
-import type { TypingResult } from "@/lib/types";
+import { Suspense } from "react";
+import TypingTestPanel from "@/components/TypingTestPanel";
+import SkillProfile from "@/components/SkillProfile";
+import AdSlot from "@/components/AdSlot";
 
-export default function PunctuationTest() {
-  const pool = ENGLISH_CORPUS.filter(c=>c.mode==="punctuation" || c.tags.includes("punctuation"));
-  const [idx, setIdx] = useState(0);
-  const [res, setRes] = useState<TypingResult|null>(null);
-  const item = pool[idx % pool.length] || ENGLISH_CORPUS[0];
+export default function PunctuationTestPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Punctuation Typing Test</h1>
-      <p className="text-sm text-zinc-600">Copy Pro precision — quotes, apostrophes, em-dashes, commas. Differentiates from simplistic WPM lists.</p>
-      <div className="mt-4">
-        {!res ? <TypingEngine key={item.id+idx} item={item} durationSec={30} onComplete={setRes} /> : <ResultCard result={res} onNext={()=>{setRes(null); setIdx(i=>i+1);}} />}
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="text-center text-2xl font-black">Punctuation Typing Test</h1>
+      <p className="mx-auto mt-1 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
+        Copy Pro precision — commas, apostrophes, quotes, dashes, capitalization and realistic business text.
+      </p>
+      <div className="mt-8">
+        <Suspense fallback={<div className="py-16 text-center text-sm text-zinc-500">Loading…</div>}>
+          <TypingTestPanel initialMode="copy-pro" />
+        </Suspense>
+      </div>
+      <div className="mt-10 flex flex-col items-center gap-6">
+        <SkillProfile />
+        <AdSlot slot="punctuation" />
       </div>
     </div>
   );

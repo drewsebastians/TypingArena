@@ -1,99 +1,145 @@
 "use client";
+// Progress — private history + skill profile + optional account. (noindex)
 import { useEffect, useState } from "react";
-import { loadTypingHistory, loadDictationHistory, clearHistory, getStreak, getXP } from "@/lib/history";
-import SkillProfile from "@/components/SkillProfile";
-import ErrorHeatmap from "@/components/ErrorHeatmap";
-import { levelFromXP } from "@/lib/skillMatrix";
-import { track, getQueue } from "@/lib/analytics";
-import type { TypingResult, DictationResult } from "@/lib/types";
+import Link from "next/link";
+import { buildSkillMatrix, nextExerciseRecommendation } from "@/lib/skillMatrix";
+import { getStreak, loadDictationHistory, loadTranscriptionHistory, loadTypingHistory } from "@/lib/history";
+import { track } from "@/lib/analytics";
+import AccountPanel from "@/components/AccountPanel";
+import PrivacyPanel from "@/components/PrivacyPanel";
+import AdSlot from "@/components/AdSlot";
 
 export default function ProgressPage() {
-  const [typing, setTyping] = useState<TypingResult[]>([]);
-  const [dict, setDict] = useState<DictationResult[]>([]);
-  const [xp, setXp] = useState(0);
+  const [typing, setTyping] = useState(loadTypingHistory);
+  const [dictation, setDictation] = useState(loadDictationHistory);
+  const [transcription, setTranscription] = useState(loadTranscriptionHistory);
   const [streak, setStreak] = useState(0);
+  const [tab, setTab] = useState<"typing" | "dictation" | "transcription">("typing");
+
+  useEffect(() => {
+    track("history_viewed", { source: "progress" });
+    setStreak(getStreak().current);
+  }, []);
 
   const refresh = () => {
     setTyping(loadTypingHistory());
-    setDict(loadDictationHistory());
-    setXp(getXP());
-    setStreak(getStreak());
+    setDictation(loadDictationHistory());
+    setTranscription(loadTranscriptionHistory());
   };
-  useEffect(()=>{ refresh(); track("history_viewed", {}); }, []);
-  const lvl = levelFromXP(xp);
 
-  // simple SVG sparkline for WPM
-  const wpmPoints = typing.slice(0,20).reverse().map(r=>r.wpm);
-  const maxWpm = Math.max(...wpmPoints, 60);
-  const spark = wpmPoints.length > 1 ? wpmPoints.map((v,i)=> `${(i/(wpmPoints.length-1))*100},${100 - (v/maxWpm)*80 - 10}`).join(" ") : "";
+  const matrix = buildSkillMatrix(typing, dictation, transcription);
+  const rec = nextExerciseRecommendation(matrix, typing.length);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Progress</h1>
-      <p className="text-sm text-zinc-600">Session history, D1/D7/D30-ready event model, skill matrix. Blueprint §16 KPIs: test completions, streak, dictation adoption.</p>
+      <h1 className="text-2xl font-black">Your Progress</h1>
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Private by default — stored on this device until you sign in to sync.</p>
 
-      <div className="mt-4 grid gap-4">
-        <SkillProfile />
-        {typing[0] && <ErrorHeatmap result={typing[0]} />}
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Typing tests" value={String(typing.length)} />
+        <Stat label="Dictations" value={String(dictation.length)} />
+        <Stat label="Transcriptions" value={String(transcription.length)} />
+        <Stat label="Streak" value={`${streak}d`} sub="Asia/Jakarta days" />
+      </div>
 
-        <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">WPM Trend (last 20)</h3>
-            <span className="text-xs text-zinc-500">Level {lvl.level} • {xp} XP • 🔥 {streak} days</span>
-          </div>
-          {wpmPoints.length > 1 ? (
-            <svg viewBox="0 0 100 100" className="mt-2 h-24 w-full">
-              <polyline fill="none" stroke="currentColor" strokeWidth="2" points={spark} className="text-black dark:text-white" />
-            </svg>
-          ) : <div className="py-8 text-center text-sm text-zinc-500">Complete a test to see your trend</div>}
-          <div className="mt-1 flex justify-between text-xs text-zinc-500"><span>{wpmPoints[0] ?? 0} WPM</span><span>{wpmPoints[wpmPoints.length-1] ?? 0} WPM</span></div>
-        </div>
+      <AccountPanel onChanged={refresh} />
 
-        <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="font-bold">Typing History</h3>
-          {typing.length===0 ? <div className="py-6 text-center text-sm text-zinc-500">No tests yet — <a href="/typing-test" className="underline">start a sprint</a></div> : (
-            <div className="mt-2 divide-y text-sm">
-              {typing.slice(0,20).map(r=>(
-                <div key={r.id} className="flex items-center justify-between py-2">
-                  <span className="text-xs text-zinc-500">{new Date(r.timestamp).toLocaleDateString()} • {r.durationSec}s • {r.language}</span>
-                  <span className="font-mono font-bold">{r.wpm} WPM</span>
-                  <span className="text-xs">{r.accuracy}%</span>
-                  <span className={`rounded px-1.5 py-0.5 text-xs ${r.integrity==="ranked"?"bg-emerald-100":"bg-zinc-100"}`}>{r.integrity}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="mt-6 rounded-xl bg-black p-4 text-white dark:bg-white dark:text-black">
+        <div className="text-xs uppercase tracking-widest opacity-60">Recommended next</div>
+        <div className="text-lg font-bold">{rec.label}</div>
+        <div className="text-sm opacity-80">{rec.reason}</div>
+        <Link href={rec.href} onClick={() => track("next_recommended_start", { label: rec.label })} className="mt-2 inline-block rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black dark:bg-black dark:text-white">
+          Start →
+        </Link>
+      </div>
 
-        <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="font-bold">Dictation History</h3>
-          {dict.length===0 ? <div className="py-6 text-center text-sm text-zinc-500">No dictations yet</div> : (
-            <div className="mt-2 divide-y text-sm">
-              {dict.slice(0,20).map(r=>(
-                <div key={r.id} className="flex items-center justify-between py-2">
-                  <span className="text-xs text-zinc-500">{new Date(r.timestamp).toLocaleDateString()} • {r.language}</span>
-                  <span className="font-mono font-bold">{r.normalizedScore}% norm</span>
-                  <span className="text-xs">{r.strictScore}% strict</span>
-                  <span className="text-xs text-zinc-500">↻ {r.replayCount}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="font-bold">Analytics queue (local, blueprint §16)</h3>
-          <div className="mt-2 max-h-40 overflow-auto rounded bg-zinc-950 p-2 font-mono text-xs text-emerald-300">
-            <pre>{JSON.stringify(getQueue().slice(-8), null, 2)}</pre>
-          </div>
-          <div className="mt-1 text-xs text-zinc-500">Events: landing_view, test_start, typing_test_complete, dictation_complete, focus_lost, paste_detected, etc. Swap adapter to PostHog/GA4 via env.</div>
-        </div>
-
+      <div className="mt-6">
         <div className="flex gap-2">
-          <button onClick={()=>{clearHistory(); refresh();}} className="rounded-full border px-4 py-2 text-sm">Clear local history</button>
-          <span className="self-center text-xs text-zinc-500">North-star: meaningful completed sessions per returning user • Audio-mode repeat ratio</span>
+          {(["typing", "dictation", "transcription"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === t ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 divide-y rounded-xl border bg-white dark:bg-zinc-900">
+          {tab === "typing" &&
+            (typing.length === 0 ? (
+              <Empty label="No typing tests yet" href="/typing-test" cta="Take a 30s sprint" />
+            ) : (
+              typing.slice(0, 25).map((r) => (
+                <Row
+                  key={r.id}
+                  head={`${r.grossWpm} WPM • ${r.accuracy}%`}
+                  sub={`${r.durationSec}s ${r.language} • ${new Date(r.timestamp).toLocaleString()} • errors fixed ${r.correctedErrors}/unfixed ${r.uncorrectedErrors}`}
+                  badge={r.integrity}
+                />
+              ))
+            ))}
+          {tab === "dictation" &&
+            (dictation.length === 0 ? (
+              <Empty label="No dictations yet" href="/dictation" cta="Try English dictation" />
+            ) : (
+              dictation.slice(0, 25).map((r) => (
+                <Row
+                  key={r.id}
+                  head={`${r.normalizedScore}% normalized • ${r.wordAccuracy}% words`}
+                  sub={`${r.language} • replays ${r.playback.replayCount} • ratio ${r.playback.replayRatio ?? "—"}× • ${new Date(r.timestamp).toLocaleString()}`}
+                  badge={r.integrity}
+                />
+              ))
+            ))}
+          {tab === "transcription" &&
+            (transcription.length === 0 ? (
+              <Empty label="No transcriptions yet" href="/transcription-practice" cta="Try Transcription Sprint" />
+            ) : (
+              transcription.slice(0, 25).map((r) => (
+                <Row
+                  key={r.id}
+                  head={`${r.normalizedScore}% • ${r.effectiveWpm} eWPM`}
+                  sub={`${r.language} ${r.difficulty} • ratio ${r.playback.replayRatio ?? "—"}× • pauses ${r.playback.pauseCount} • ${new Date(r.timestamp).toLocaleString()}`}
+                  badge={r.integrity}
+                />
+              ))
+            ))}
         </div>
       </div>
+
+      <PrivacyPanel onDeleted={() => { setTyping([]); setDictation([]); setTranscription([]); setStreak(0); }} />
+
+      <AdSlot slot="progress" className="mt-8" />
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg bg-white p-3 text-center dark:bg-zinc-900 border">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-2xl font-black">{value}</div>
+      {sub && <div className="text-xs text-zinc-500">{sub}</div>}
+    </div>
+  );
+}
+
+function Row({ head, sub, badge }: { head: string; sub: string; badge: string }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3">
+      <div>
+        <div className="text-sm font-semibold">{head}</div>
+        <div className="text-xs text-zinc-500">{sub}</div>
+      </div>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${badge === "ranked" ? "bg-emerald-100 text-emerald-800" : badge === "flagged" ? "bg-red-100 text-red-800" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>
+        {badge}
+      </span>
+    </div>
+  );
+}
+
+function Empty({ label, href, cta }: { label: string; href: string; cta: string }) {
+  return (
+    <div className="p-8 text-center">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <Link href={href} className="mt-2 inline-block rounded-full bg-black px-5 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-black">{cta}</Link>
     </div>
   );
 }

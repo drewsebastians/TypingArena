@@ -1,7 +1,19 @@
 "use client";
+// Analytics adapter — centralized event collection with privacy gates.
+//
+// Providers (configured via env at build time):
+//   - PostHog  (NEXT_PUBLIC_POSTHOG_KEY) — loaded lazily ONLY after the user
+//     grants analytics consent. Cookieless-ish default: we do not set a
+//     distinct identity cookie before consent.
+//   - GA4      (NEXT_PUBLIC_GA_ID) — forwarded when a global gtag exists.
+//   - Local    — always-available debug queue (capped) for development and for
+//     the user's own "export my data" page.
+//
+// If no provider is configured, track() is a safe no-op that still feeds the
+// local queue — basic practice never depends on analytics availability.
 
-// Deterministic analytics — blueprint §16 event taxonomy
-// MVP: console + localStorage queue, production swap to PostHog/GA4 via env var without changing call sites
+import { GA_ID, POSTHOG_HOST, POSTHOG_KEY } from "./config";
+import { getAnalyticsConsent } from "./history";
 
 export type EventName =
   | "landing_view"
@@ -16,6 +28,7 @@ export type EventName =
   | "audio_play"
   | "audio_pause"
   | "audio_replay"
+  | "audio_seek"
   | "dictation_submit"
   | "dictation_complete"
   | "transcription_start"
@@ -23,6 +36,9 @@ export type EventName =
   | "transcription_replay"
   | "transcription_complete"
   | "account_created"
+  | "account_login"
+  | "account_signout"
+  | "history_deleted"
   | "history_viewed"
   | "next_recommended_start"
   | "streak_incremented"
@@ -30,6 +46,7 @@ export type EventName =
   | "daily_arena_complete"
   | "leaderboard_view"
   | "friend_challenge_created"
+  | "friend_challenge_opened"
   | "friend_challenge_completed"
   | "share_card_created"
   | "share_clicked"
@@ -40,31 +57,65 @@ export type EventName =
   | "heatmap_viewed";
 
 const QUEUE_KEY = "ta:analytics_queue";
+let posthogLoading = false;
 
-export function track(event: EventName, props: Record<string, unknown> = {}) {
-  const payload = { event, props, ts: Date.now(), path: typeof window !== "undefined" ? window.location.pathname : "" };
-  if (typeof window !== "undefined") {
-    // console for dev inspection
-    console.debug(`[analytics] ${event}`, props);
-    try {
-      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
-      q.push(payload);
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-500)));
-      // also dispatch custom event for any listener (e.g., Data layer)
-      window.dispatchEvent(new CustomEvent("ta:track", { detail: payload }));
-    } catch {}
-    // placeholder: if window.gtag exists, forward
-    const w = window as unknown as { gtag?: (...args: unknown[]) => void; posthog?: { capture: (e: string, p: unknown) => void } };
-    if (w.gtag) w.gtag("event", event, props);
-    if (w.posthog) w.posthog.capture(event, { ...props, path: payload.path });
+function posthogGlobal(): { capture: (e: string, p: Record<string, unknown>) => void } | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { posthog?: { capture: (e: string, p: Record<string, unknown>) => void } };
+  return w.posthog ?? null;
+}
+
+/** Load PostHog from CDN only when consent exists + key configured. */
+function ensurePosthog(): void {
+  if (typeof window === "undefined" || posthogLoading) return;
+  if (!POSTHOG_KEY || getAnalyticsConsent() !== "granted") return;
+  if (posthogGlobal()) return;
+  posthogLoading = true;
+  const w = window as unknown as Record<string, unknown>;
+  const script = document.createElement("script");
+  script.src = `${POSTHOG_HOST}/static/array.js`;
+  script.async = true;
+  script.onload = () => {
+    const shim = (w.posthog as unknown as unknown[] | undefined);
+    if (Array.isArray(shim)) {
+      shim.push(["init", POSTHOG_KEY, { api_host: POSTHOG_HOST, persistence: "localStorage+cookie", autocapture: false }]);
+    }
+  };
+  document.head.appendChild(script);
+}
+
+export function track(event: EventName, props: Record<string, unknown> = {}): void {
+  if (typeof window === "undefined") return;
+  const payload = { event, props, ts: Date.now(), path: window.location.pathname };
+
+  try {
+    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as unknown[];
+    q.push(payload);
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-500)));
+  } catch {
+    /* ignore */
+  }
+
+  // Third-party forwarding requires consent.
+  if (getAnalyticsConsent() === "granted") {
+    ensurePosthog();
+    const ph = posthogGlobal();
+    if (ph) ph.capture(event, { ...props, path: payload.path });
+    const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+    if (gtag && GA_ID) gtag("event", event, props);
   }
 }
 
-export function getQueue(): unknown[] {
+/** Dev/privacy-page helper: read the local queue. */
+export function getQueue(): Array<{ event: EventName; props: Record<string, unknown>; ts: number; path: string }> {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 
-export function clearQueue() {
+export function clearQueue(): void {
   if (typeof window !== "undefined") localStorage.removeItem(QUEUE_KEY);
 }

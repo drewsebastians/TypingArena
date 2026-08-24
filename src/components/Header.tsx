@@ -23,7 +23,7 @@ export default function Header() {
   const [input, setInput] = useState("");
 
   useEffect(() => {
-    setStreak(getStreak());
+    setStreak(getStreak().current);
     setU(getUsername());
   }, [pathname]);
 

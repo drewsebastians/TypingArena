@@ -1,25 +1,24 @@
 "use client";
-import { useState } from "react";
-import TypingEngine from "@/components/TypingEngine";
-import ResultCard from "@/components/ResultCard";
-import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
-import type { TypingResult } from "@/lib/types";
+import { Suspense } from "react";
+import TypingTestPanel from "@/components/TypingTestPanel";
+import SkillProfile from "@/components/SkillProfile";
+import AdSlot from "@/components/AdSlot";
 
 export default function IndonesianTypingPage() {
-  const [idx, setIdx] = useState(0);
-  const [result, setResult] = useState<TypingResult | null>(null);
-  const [dur, setDur] = useState<15|30|60>(30);
-  const item = INDONESIAN_CORPUS[idx % INDONESIAN_CORPUS.length];
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Tes Mengetik Bahasa Indonesia</h1>
-      <p className="text-sm text-zinc-600">Tes kecepatan mengetik gratis — 15/30/60 detik, akurasi, analisis kesalahan per tombol.</p>
-      <div className="mt-3 flex gap-2">
-        {[15,30,60].map(d=> <button key={d} onClick={()=>setDur(d as any)} className={`rounded-full px-3 py-1 text-sm ${d===dur?"bg-black text-white":"border"}`}>{d}s</button>)}
-        <button onClick={()=>{setResult(null); setIdx(i=>i+1);}} className="rounded-full border px-3 py-1 text-sm">Teks baru</button>
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="text-center text-2xl font-black">Tes Mengetik — Bahasa Indonesia</h1>
+      <p className="mx-auto mt-1 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
+        Uji kecepatan dan akurasi mengetik dengan korpus Bahasa Indonesia. Tes berjalan sesuai durasi penuh.
+      </p>
+      <div className="mt-8">
+        <Suspense fallback={<div className="py-16 text-center text-sm text-zinc-500">Memuat…</div>}>
+          <TypingTestPanel initialLanguage="id" />
+        </Suspense>
       </div>
-      <div className="mt-4">
-        {!result ? <TypingEngine key={item.id+String(dur)+idx} item={item} durationSec={dur} onComplete={setResult} /> : <ResultCard result={result} onNext={()=>{setResult(null); setIdx(i=>i+1);}} />}
+      <div className="mt-10 flex flex-col items-center gap-6">
+        <SkillProfile />
+        <AdSlot slot="typing-id" />
       </div>
     </div>
   );

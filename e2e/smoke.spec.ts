@@ -1,0 +1,151 @@
+import { expect, test } from "@playwright/test";
+
+// Core user flows against the production static export.
+// Shared-competition features degrade honestly in this environment because no
+// backend is configured — those degradations are asserted too.
+
+test.describe("typing tests — timed semantics", () => {
+  const WORDS = "the quick brown fox jumps over the lazy dog ".repeat(25);
+
+  for (const duration of [15, 30]) {
+    test(`${duration}s sprint runs the full clock and produces a result`, async ({ page }) => {
+      await page.goto(`/typing-test?duration=${duration}`);
+      const input = page.getByLabel(/Type here/);
+      await input.click();
+      // Type steadily; passages must keep flowing until the full clock.
+      const start = Date.now();
+      await input.pressSequentially(WORDS, { delay: Math.max(1, (duration * 1000 - 1500) / WORDS.length) });
+      await expect(page.getByRole("heading", { name: /your result/i })).toBeVisible({ timeout: 20_000 });
+      const elapsedWall = Date.now() - start;
+      expect(elapsedWall).toBeGreaterThanOrEqual(duration * 1000 - 2500);
+    });
+  }
+
+  test("5-minute mode is offered and starts its endurance clock", async ({ page }) => {
+    await page.goto("/typing-test");
+    await page.getByRole("group", { name: "test duration" }).getByText("5 min").click();
+    const input = page.getByLabel(/Type here/);
+    await input.click();
+    await input.pressSequentially("hello world ", { delay: 20 });
+    await expect(page.getByText("300s", { exact: true })).toBeVisible(); // full 300s on the HUD
+  });
+
+  test("accuracy does not penalize untouched future text", async ({ page }) => {
+    await page.goto("/typing-test?duration=15");
+    const input = page.getByLabel(/Type here/);
+    await input.click();
+    // Type the FIRST characters of whatever passage was issued (deterministic
+    // per exerciseId) so they are all correct by construction.
+    const passage = (await page.locator("p[aria-hidden=true]").textContent()) ?? "";
+    await input.pressSequentially(passage.slice(0, 4), { delay: 80 });
+    await expect(page.getByText("100%", { exact: true })).toBeVisible();
+  });
+
+  test("paste is blocked inside the active area", async ({ page }) => {
+    await page.goto("/typing-test?duration=15");
+    await page.getByRole("group", { name: "test duration" }).waitFor();
+    const input = page.getByLabel(/Type here/);
+    await input.click();
+    await input.pressSequentially("abc", { delay: 10 });
+    await input.evaluate((el) => {
+      el.dispatchEvent(
+        new ClipboardEvent("paste", { bubbles: true, cancelable: true }),
+      );
+    });
+    await expect(page.getByText(/paste blocked/i)).toBeVisible();
+  });
+
+  test("indonesian tool pages are localized", async ({ page }) => {
+    await page.goto("/tes-mengetik");
+    await expect(page.getByRole("heading", { name: /tes mengetik cepat/i })).toBeVisible();
+  });
+});
+
+test.describe("audio modes — static assets", () => {
+  test("dictation plays a real static audio file with controls", async ({ page }) => {
+    await page.goto("/dictation/english");
+    const audio = page.locator("audio");
+    await expect(audio).toHaveCount(1);
+    const src = await audio.getAttribute("src");
+    expect(src).toMatch(/^\/audio\/dictation\/dict-en-\d+\.mp3$/);
+    await expect(audio).toHaveAttribute("preload", "metadata");
+
+    // The file itself resolves.
+    const resp = await page.request.get(src!);
+    expect(resp.status()).toBe(200);
+    expect(resp.headers()["content-type"]).toContain("audio");
+  });
+
+  test("indonesian dictation uses an id clip", async ({ page }) => {
+    await page.goto("/dictation/indonesian");
+    const src = await page.locator("audio").getAttribute("src");
+    expect(src).toMatch(/^\/audio\/dictation\/dict-id-/);
+  });
+
+  test("transcription offers multi-clip EN/ID workspace", async ({ page }) => {
+    await page.goto("/transcription-practice");
+    await expect(page.getByRole("heading", { name: /transcription sprint/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /play clip/i })).toBeVisible();
+    await expect(page.locator("textarea")).toBeVisible();
+    await page.getByRole("button", { name: "Bahasa Indonesia" }).click();
+    const src = await page.locator("audio").getAttribute("src");
+    expect(src).toMatch(/^\/audio\/transcription\/trans-id-/);
+  });
+});
+
+test.describe("shared competition — honest degradation without backend", () => {
+  test("daily arena renders today's challenge and an honest board state", async ({ page }) => {
+    await page.goto("/daily-arena");
+    await expect(page.getByRole("heading", { name: /challenge/i })).toBeVisible();
+    // Either sign-in prompt or unconfigured notice — never fake rows.
+    const notice = page.getByText(/shared board|sign in|backend/i);
+    await expect(notice.first()).toBeVisible();
+  });
+
+  test("leaderboard shows setup notice instead of fabricated players", async ({ page }) => {
+    await page.goto("/leaderboard");
+    await expect(page.getByText(/backend/i).first()).toBeVisible();
+    await expect(page.getByText("@typemaster")).toHaveCount(0);
+    await expect(page.getByText("@sarah_t")).toHaveCount(0);
+  });
+
+  test("friend challenges require central storage and say so", async ({ page }) => {
+    await page.goto("/friends");
+    await expect(page.getByText(/cross-device challenges need the shared backend/i)).toBeVisible();
+  });
+});
+
+test.describe("progress & privacy", () => {
+  test("progress shows empty history honestly", async ({ page }) => {
+    await page.addInitScript(() => localStorage.clear());
+    await page.goto("/progress");
+    await expect(page.getByText("0", { exact: true }).first()).toBeVisible();
+  });
+
+  test("robots disallows progress; sitemap excludes it", async ({ page }) => {
+    const robots = await (await page.request.get("/robots.txt")).text();
+    expect(robots).toContain("Disallow: /progress");
+    const sitemap = await (await page.request.get("/sitemap.xml")).text();
+    expect(sitemap).not.toContain("/progress</loc>");
+    expect(sitemap).not.toContain("example.com");
+  });
+
+  test("privacy page documents data practices", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(page.getByRole("heading", { name: "Privacy" })).toBeVisible();
+  });
+});
+
+test.describe("keyboard accessibility sanity", () => {
+  test("result CTAs are reachable by keyboard", async ({ page }) => {
+    await page.goto("/typing-test?duration=15");
+    const input = page.getByLabel(/Type here/);
+    await input.click();
+    const words = "the quick brown fox jumps over the lazy dog ".repeat(30);
+    await input.pressSequentially(words, { delay: (14_000) / words.length });
+    await expect(page.getByRole("heading", { name: /your result/i })).toBeVisible({ timeout: 20_000 });
+    await page.keyboard.press("Tab"); // focus moves into result actions
+    const focused = page.evaluate(() => document.activeElement?.textContent ?? "");
+    expect((await focused).length).toBeGreaterThan(0);
+  });
+});

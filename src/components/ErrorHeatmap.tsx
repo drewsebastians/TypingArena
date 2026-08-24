@@ -21,7 +21,7 @@ function heatColor(rate: number): string {
 }
 
 export default function ErrorHeatmap({ result, compact }: { result: TypingResult; compact?: boolean }) {
-  useEffect(() => { track("heatmap_viewed", { wpm: result.wpm, accuracy: result.accuracy }); }, [result.id]);
+  useEffect(() => { track("heatmap_viewed", { wpm: result.grossWpm, accuracy: result.accuracy }); }, [result.id, result.grossWpm, result.accuracy]);
 
   // include number row + punctuation hint
   const numbers = "1234567890".split("");
@@ -93,3 +93,4 @@ export default function ErrorHeatmap({ result, compact }: { result: TypingResult
     </div>
   );
 }
+
