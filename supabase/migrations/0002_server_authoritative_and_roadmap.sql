@@ -163,7 +163,7 @@ begin
         v_dur, v_elapsed, v_typed, v_uncorr, v_wpm, v_acc, v_integrity, v_challenge,
         v_challenge_version, true, p->'metrics');
       return jsonb_build_object('accepted', true, 'integrity', 'ranked',
-        'wpm', v_wpm, 'accuracy', v_acc, 'reasons', '[]'::text[]);
+        'wpm', v_wpm, 'accuracy', v_acc, 'reasons', to_jsonb(ARRAY[]::text[]));
       exception when unique_violation then
         v_integrity := 'practice'; v_ranked := false;
         v_reasons := v_reasons || array['daily_already_ranked'];
