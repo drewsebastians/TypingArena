@@ -20,7 +20,7 @@ create index if not exists attempts_client_idx on public.attempts (user_id, clie
 delete from public.attempts a
 using public.attempts b
 where a.user_id = b.user_id and a.client_id = b.client_id
-  and a.client_id is not null and ctid > b.ctid;
+  and a.client_id is not null and a.ctid > b.ctid;
 
 create unique index if not exists attempts_user_client_uniq
   on public.attempts (user_id, client_id)
