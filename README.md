@@ -100,7 +100,8 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
 
 1. Create a free Supabase project.
 2. Apply migrations in order: `supabase/migrations/0001_init.sql`,
-   `0002_server_authoritative_and_roadmap.sql`.
+   `0002_server_authoritative_and_roadmap.sql`, `0003_fix_signup_trigger.sql`,
+   `0004_zero_deferred_closure.sql`, `0005_final_closure.sql`.
 3. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 4. Enable Email (magic-link) auth; set Site URL to your origin.
 5. Schedule `select purge_expired();` daily (pg_cron).
@@ -130,10 +131,21 @@ check). Streak/skill profile then rebuild from merged history.
 ## Ranked validation model
 
 Client sends evidence (counts, flags, challenge refs). Server derives wpm =
-typed/5/min and accuracy = correct/typed, compares to claims (>10% drift ⇒
+typed/5/min and accuracy = correct/typed, compares to claims (>10% drift →
 flagged), enforces plausibility (<220 WPM), binds Daily submissions to today's
 canonical Asia/Jakarta challenge, allows one ranked daily per day, and is
-idempotent per attempt id. Public views expose only accepted ranked rows.
+idempotent per attempt id. `submit_attempt()` is the ONLY authenticated write
+path into attempts — direct INSERT/UPDATE are revoked — and ranked eligibility
+additionally requires a canonical official exercise configuration (unknown
+families stay private practice). Team membership exists only through the
+`create_team`/`join_team` RPCs; classroom completions bind to real attempts
+with server-derived scores; assessment candidates resolve the exact saved
+module sequence from their invite (with not-open/revoked/expired states);
+multiplayer races are started/rematched only by the host token holder with
+results recomputed from evidence; friend results flow through a validating
+rate-limited RPC. The full threat model and persistence matrix live in
+`docs/ADR-004-trust-model.md`; launch-blocking external actions in
+`docs/PRODUCTION_HANDOFF.md`.
 This is a materially stronger boundary than trusting the browser — while still
 being heuristic anti-cheat, not formal proctoring.
 
@@ -165,15 +177,19 @@ state — integration is complete either way.
   career track list, keyboard reachability, robots/sitemap hygiene.
 - **DB integration suite** (CI): RLS denial, ranked accept/forgery-reject,
   daily date binding, idempotent resubmission, custom-test visibility, team
-  join, complete account deletion.
+  join, complete account deletion — plus team-membership authorization
+  regressions, real-attempt assignment binding, invite definition resolution,
+  and multiplayer host authority / evidence-derived race results.
 
 ## Documentation index
 
 - `docs/ADR-001-deployment.md` — deployment architecture decision
 - `docs/ADR-002-product-day.md` — Asia/Jakarta product-day boundary
 - `docs/ADR-003-scoring.md` — scoring v2 semantics + integrity model
+- `docs/ADR-004-trust-model.md` — explicit ranked-integrity trust boundary
 - `docs/LICENSES.md` — content/audio rights record (closed: Piper MIT)
 - `docs/api/openapi.yaml` — Tournament API v1 specification
+- `docs/PRODUCTION_HANDOFF.md` — external launch actions (the only remaining work)
 - `BLUEPRINT_COMPLETION_REPORT.md` — final status matrix with evidence
 
 ## Contributing

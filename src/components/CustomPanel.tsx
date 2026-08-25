@@ -46,7 +46,9 @@ export default function CustomPanel() {
   useEffect(() => {
     if (!IS_REMOTE_CONFIGURED) return;
     void getCurrentUser().then((u) => setSignedIn(Boolean(u)));
-    void fetchMyCustomTests().then(setMine).catch(() => undefined);
+    void fetchMyCustomTests()
+      .then(setMine)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not load your tests"));
     const params = new URLSearchParams(window.location.search);
     const testId = params.get("test");
     if (testId) setViewingId(testId.toUpperCase());
@@ -153,7 +155,10 @@ function TakeCustomTest({ testId, onBack }: { testId: string; onBack: () => void
 
   useEffect(() => {
     fetchCustomTest(testId)
-      .then((t) => setTest(t))
+      .then((t) => {
+        setTest(t);
+        track("custom_test_run", { language: t.language });
+      })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Load failed"));
   }, [testId]);
 

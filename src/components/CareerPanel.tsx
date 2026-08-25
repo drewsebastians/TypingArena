@@ -1,7 +1,7 @@
 "use client";
 // Career Mode runner — sequential standardized modules per track with a
 // transparent score breakdown. Practice assessment only (no certification).
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CAREER_TRACKS, audioEfficiency, getTrack, scoreModules, typingEfficiency } from "@/lib/career";
 import type { CareerAssessmentResult, CareerTrack, ModuleScore } from "@/lib/career";
@@ -15,6 +15,7 @@ import TranscriptionEngine from "@/components/TranscriptionEngine";
 import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import { queueAttempt } from "@/lib/sync";
+import { loadCareerHistory, saveCareerResult } from "@/lib/history";
 import { getLocale, t } from "@/lib/i18n";
 import type { CorpusItem, DictationResult, TranscriptionResult, TypingResult } from "@/lib/types";
 
@@ -46,13 +47,7 @@ export default function CareerPanel() {
     (track: CareerTrack, all: ModuleScore[]) => {
       const res = scoreModules(track, all);
       setResult(res);
-      try {
-        const prev = JSON.parse(localStorage.getItem("ta:career_history") ?? "[]") as CareerAssessmentResult[];
-        const next = [res, ...prev].slice(0, 50);
-        localStorage.setItem("ta:career_history", JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
+      saveCareerResult(res);
       void queueAttempt({
         clientId: `career-${track.id}-${res.completedAt}`,
         exerciseId: `career:${track.id}`,
@@ -138,13 +133,12 @@ export default function CareerPanel() {
     [active, moduleIdx, scores, finish],
   );
 
-  const currentHistory = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("ta:career_history") ?? "[]") as CareerAssessmentResult[];
-    } catch {
-      return [];
-    }
-  }, []);
+  // Loaded in an effect so cross-device hydration (sign-in on /progress)
+  // and local saves both stay consistent with the shared history store.
+  const [currentHistory, setCurrentHistory] = useState<CareerAssessmentResult[]>([]);
+  useEffect(() => {
+    setCurrentHistory(loadCareerHistory());
+  }, [result]);
 
   // ---- views ---------------------------------------------------------------
   if (result && active) {

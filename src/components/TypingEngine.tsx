@@ -36,6 +36,12 @@ export interface TypingEngineProps {
   exerciseVersion?: string;
   challengeDate?: string;
   onComplete?: (r: TypingResult) => void;
+  /**
+   * Advisory progress signal for observers (e.g. multiplayer race UI).
+   * Throttled to ~3 updates/sec; never fires after completion. NOT part of
+   * scoring — authoritative metrics still come only from onComplete.
+   */
+  onProgress?: (p: { typedChars: number; correctChars: number; progressPct: number; liveWpm: number; elapsedMs: number }) => void;
 }
 
 const WINDOW_BEFORE = 48;
@@ -60,6 +66,7 @@ export default function TypingEngine({
   exerciseVersion = "v2",
   challengeDate,
   onComplete,
+  onProgress,
 }: TypingEngineProps) {
   const [entries, setEntries] = useState<EntryView[]>([]);
   const [started, setStarted] = useState(false);
@@ -80,6 +87,11 @@ export default function TypingEngine({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const lastFocusSignalRef = useRef(0);
+  const lastProgressSentRef = useRef(0);
+  const onProgressRef = useRef(onProgress);
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
 
   // Deterministic per-session stream (stable identity across renders).
   const [stream] = useState(
@@ -166,12 +178,29 @@ export default function TypingEngine({
     if (burstDetected) track("suspicious_burst_detected", { wpm: result.grossWpm });
   }, [durationSec, language, mode, exerciseId, exerciseVersion, challengeDate, onComplete, pasteFlag]);
 
-  // Timer — ends the test exactly at the configured duration.
+  // Timer — ends the test exactly at the configured duration. The same tick
+  // emits throttled (~3/sec) advisory progress for observers.
   useEffect(() => {
     if (!started || finished) return;
+    const emitProgress = () => {
+      if (!onProgressRef.current) return;
+      const now = Date.now();
+      if (now - lastProgressSentRef.current < 300) return;
+      lastProgressSentRef.current = now;
+      const pos = trackerRef.current.length;
+      const elapsed = Math.max(1, Date.now() - (startAtRef.current ?? Date.now()));
+      onProgressRef.current({
+        typedChars: pos,
+        correctChars: trackerRef.current.finalEntries().filter((x) => x.typed === x.expected).length,
+        progressPct: Math.min(100, Math.round((elapsed / (durationSec * 1000)) * 100)),
+        liveWpm: elapsed > 750 ? Math.round(pos / 5 / (elapsed / 60_000)) : 0,
+        elapsedMs: elapsed,
+      });
+    };
     timerRef.current = window.setInterval(() => {
       const elapsed = Date.now() - (startAtRef.current ?? Date.now());
       setElapsedMs(elapsed);
+      emitProgress();
       if (elapsed >= durationSec * 1000) {
         if (timerRef.current) window.clearInterval(timerRef.current);
         finish();

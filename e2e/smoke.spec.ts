@@ -141,7 +141,9 @@ test.describe("roadmap features — honest states without backend", () => {
     await page.goto("/career");
     await expect(page.getByRole("heading", { name: /career mode/i })).toBeVisible();
     for (const track of ["Data Entry", "Office / Admin", "Numbers & Codes", "Punctuation Precision", "Transcription"]) {
-      await expect(page.getByText(track, { exact: true }).first()).toBeVisible();
+      // Track names are card headings — role-scoped so hidden mobile nav
+      // links with the same text never shadow them.
+      await expect(page.getByRole("heading", { name: track, exact: true }).first()).toBeVisible();
     }
     // Assessment runner starts with the standard typing engine.
     await page.getByRole("button", { name: /start assessment/i }).first().click();

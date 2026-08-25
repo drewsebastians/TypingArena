@@ -27,13 +27,21 @@ jobs:
         run: npm test
       - name: Build (static export)
         run: npm run build
+      - name: Static output gate (sitemap, robots, placeholders)
+        run: node scripts/check-production-readiness.mjs
       - name: Production bundle must not contain runtime TTS or placeholder domains
         run: |
           if grep -rl "speechSynthesis" out/_next --include="*.js"; then
             echo "::error::speechSynthesis found in production bundles"; exit 1
           fi
+          if grep -rlE "edge-tts|tts\.speech|googleapis\.com.*texttospeech|openai\.com|api\.anthropic|claude\.ai" out/_next --include="*.js" 2>/dev/null; then
+            echo "::error::runtime AI/TTS endpoints found in production bundles"; exit 1
+          fi
           if grep -rq "typingarena.example" out --include="*.html" --include="*.xml" --include="*.txt"; then
             echo "::error::placeholder domain leaked into production output"; exit 1
+          fi
+          if grep -rqE "example\.(com|org)|placeholder\.invalid" out/sitemap.xml out/robots.txt 2>/dev/null; then
+            echo "::error::placeholder domain in sitemap/robots"; exit 1
           fi
           echo "clean"
 

@@ -60,17 +60,33 @@ export type EventName =
   | "career_complete"
   | "multiplayer_room_created"
   | "multiplayer_joined"
+  | "multiplayer_start"
+  | "multiplayer_start_denied"
   | "multiplayer_finished"
+  | "multiplayer_result_rejected"
+  | "multiplayer_rematch"
   | "team_created"
   | "team_joined"
+  | "team_join_failed"
+  | "assignment_created"
+  | "assignment_started"
   | "assignment_completed"
+  | "assignment_submission_failed"
   | "custom_test_created"
   | "custom_test_completed"
+  | "custom_test_run"
   | "assessment_created"
-  | "assessment_completed";
+  | "assessment_invite_invalid"
+  | "assessment_invite_revoked"
+  | "assessment_completed"
+  | "sync_retry_scheduled"
+  | "sync_permanent_rejection"
+  | "ranked_submission_rejected"
+  | "multiplayer_progress_connected";
 
 const QUEUE_KEY = "ta:analytics_queue";
 let posthogLoading = false;
+let gtagLoading = false;
 
 function posthogGlobal(): { capture: (e: string, p: Record<string, unknown>) => void } | null {
   if (typeof window === "undefined") return null;
@@ -94,6 +110,45 @@ function ensurePosthog(): void {
       shim.push(["init", POSTHOG_KEY, { api_host: POSTHOG_HOST, persistence: "localStorage+cookie", autocapture: false }]);
     }
   };
+  // Allow a retry on the next track() call instead of wedging forever.
+  script.onerror = () => {
+    posthogLoading = false;
+  };
+  document.head.appendChild(script);
+}
+
+/**
+ * Real GA4 initialization path: injects the official gtag.js loader once,
+ * after consent, with IP anonymization. Events are then forwarded via the
+ * standard `gtag('event', …)` queue in track().
+ */
+function ensureGtag(): void {
+  if (typeof window === "undefined" || gtagLoading) return;
+  if (!GA_ID || getAnalyticsConsent() !== "granted") return;
+  const w = window as unknown as {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  };
+  gtagLoading = true;
+  if (!w.dataLayer) w.dataLayer = [];
+  // Official gtag.js bootstrap — defines window.gtag over dataLayer.
+  w.gtag =
+    w.gtag ??
+    function gtag(...args: unknown[]) {
+      w.dataLayer!.push(args);
+    };
+  if (!w.dataLayer.some((entry) => Array.isArray(entry) && entry[0] === "js")) {
+    w.gtag("js", new Date());
+    w.gtag("config", GA_ID, { anonymize_ip: true });
+  }
+  const existing = document.querySelector<HTMLScriptElement>(`script[src^="https://www.googletagmanager.com/gtag/js"]`);
+  if (existing) return;
+  const script = document.createElement("script");
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`;
+  script.async = true;
+  script.onerror = () => {
+    gtagLoading = false;
+  };
   document.head.appendChild(script);
 }
 
@@ -114,8 +169,11 @@ export function track(event: EventName, props: Record<string, unknown> = {}): vo
     ensurePosthog();
     const ph = posthogGlobal();
     if (ph) ph.capture(event, { ...props, path: payload.path });
-    const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-    if (gtag && GA_ID) gtag("event", event, props);
+    if (GA_ID) {
+      ensureGtag();
+      const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+      if (gtag) gtag("event", event, props);
+    }
   }
 }
 

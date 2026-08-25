@@ -45,8 +45,10 @@ export default function AccountPanel({ onChanged }: { onChanged: () => void }) {
       try {
         const report = await hydrateFromRemote();
         await flushQueue();
-        if (!cancelled && report.addedTyping + report.addedDictation + report.addedTranscription > 0) {
-          setMsg(`Synced ${report.addedTyping + report.addedDictation + report.addedTranscription} attempts from your account.`);
+        const restored =
+          report.addedTyping + report.addedDictation + report.addedTranscription + report.addedCareer;
+        if (!cancelled && restored > 0) {
+          setMsg(`Synced ${restored} results from your account.`);
           onChanged();
         }
       } catch {
