@@ -174,6 +174,8 @@ try {
   {
     const teamCode = "TESTCODE99";
     await client.query("insert into public.teams (name, join_code, owner_id) values ($1,$2,$3)", ["QA Team", teamCode, userA]);
+    // App flow adds the owner as a member at creation time.
+    await client.query("insert into public.team_members (team_id, user_id, role) select id, owner_id, 'owner' from public.teams where join_code=$1", [teamCode]);
     const joined = await asUser(userB, () => client.query("SELECT public.join_team($1) tid", [teamCode]));
     ok("second user joins by code", Boolean(joined.rows[0].tid));
     const members = await client.query("select count(*) c from public.team_members m join public.teams t on t.id=m.team_id where t.join_code=$1", [teamCode]);

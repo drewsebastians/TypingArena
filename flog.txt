@@ -1,0 +1,25 @@
+﻿db-integration	Run DB integration scenarios	∩╗┐2026-08-25T05:46:57.3048835Z ##[group]Run node scripts/db-integration.mjs
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3049226Z ^[[36;1mnode scripts/db-integration.mjs^[[0m
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3090232Z shell: /usr/bin/bash -e {0}
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3090502Z env:
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3090734Z   SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3091394Z   SUPABASE_DB_URL: ***127.0.0.1:54322/postgres
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.3091698Z ##[endgroup]
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4026796Z connected to local backend
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4140715Z   Γ£ô RLS blocks anonymous direct attempt inserts
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4204156Z   Γ£ô valid evidence accepted as ranked
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4205037Z   Γ£ô server-derived wpm matches recomputation
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4217154Z   Γ£ô accepted entry appears in public_leaderboard view
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4247819Z   Γ£ô forged 250wpm claim is NOT ranked
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4255648Z   Γ£ô forged entry invisible on public board
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4297336Z   Γ£ô wrong challenge_date rejected from ranked
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4322851Z   Γ£ô correct-date daily ranked
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4350075Z   Γ£ô second same-day daily demoted to practice
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4408814Z   Γ£ô duplicate client_id stays single row (idempotent)
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4448359Z   Γ£ô custom test created + readable anonymously
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4483299Z   Γ£ô second user joins by code
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4491265Z   Γ£ù membership recorded 
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4567370Z   Γ£ô delete_my_account removes the auth user
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4612815Z 
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4613207Z db-integration: 13 passed, 1 failed
+db-integration	Run DB integration scenarios	2026-08-25T05:46:57.4658050Z ##[error]Process completed with exit code 1.
