@@ -50,3 +50,5 @@ e2e-*.log
 # piper voice models (re-downloaded by npm run generate:audio)
 *.onnx
 *.onnx.json
+
+dblog.txt

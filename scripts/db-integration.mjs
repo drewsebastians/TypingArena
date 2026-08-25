@@ -36,15 +36,20 @@ function ok(name, cond, extra = "") {
 
 async function asUser(userId, fn) {
   // Simulate an authenticated PostgREST context inside a transaction.
+  // COMMITs on success so downstream assertions can see persisted rows
+  // (fresh DB per CI run makes this safe).
   await client.query("BEGIN");
   await client.query("SET LOCAL ROLE authenticated");
   await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
     JSON.stringify({ sub: userId, role: "authenticated" }),
   ]);
   try {
-    return await fn();
-  } finally {
-    await client.query("ROLLBACK");
+    const result = await fn();
+    await client.query("COMMIT");
+    return result;
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw e;
   }
 }
 

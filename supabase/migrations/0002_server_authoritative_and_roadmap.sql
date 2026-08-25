@@ -142,9 +142,9 @@ begin
     end if;
   end if;
 
-  if array_length(v_reasons, 1) = 0 and v_typed >= 20 and v_elapsed >= 8000 then
+  if coalesce(array_length(v_reasons, 1), 0) = 0 and v_typed >= 20 and v_elapsed >= 8000 then
     v_integrity := 'ranked';
-  elsif array_length(v_reasons, 1) = 0 then
+  elsif coalesce(array_length(v_reasons, 1), 0) = 0 then
     v_integrity := 'practice'; v_reasons := v_reasons || array['too_short'];
   else
     v_integrity := 'flagged';
