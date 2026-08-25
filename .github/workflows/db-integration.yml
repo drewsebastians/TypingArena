@@ -19,8 +19,7 @@ jobs:
           version: latest
       - name: Start local stack + apply migrations
         run: |
-          # Repo ships supabase/config.toml + supabase/migrations — db reset
-          # starts the stack and replays every migration.
+          supabase start
           supabase db reset
       - uses: actions/setup-node@v4
         with:
