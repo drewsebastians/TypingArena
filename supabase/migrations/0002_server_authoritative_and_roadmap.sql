@@ -50,7 +50,9 @@ begin
     window_start = case
       when public.rate_limits.window_start < now() - per_interval then now()
       else public.rate_limits.window_start end;
-  select count <= max_events into ok from public.rate_limits where bucket = bump_rate_limit.bucket;
+  select rl.count <= max_events into ok
+  from public.rate_limits rl
+  where rl.bucket = bump_rate_limit.bucket;
   return coalesce(ok, false);
 end; $$;
 
