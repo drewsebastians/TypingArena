@@ -170,14 +170,20 @@ begin
     end;
   end if;
 
-  insert into public.attempts (user_id, client_id, exercise_id, exercise_version,
-    scoring_version, normalization_version, mode, language, duration_sec, elapsed_ms,
-    typed_chars, uncorrected_errors, wpm, accuracy, integrity, challenge_date,
-    challenge_version, ranked_accepted, metrics)
-  values (uid, p->>'client_id', p->>'exercise_id', coalesce(p->>'exercise_version','v3'),
-    coalesce(p->>'scoring_version','v2.0.0'), p->>'normalization_version', v_mode, v_lang,
-    v_dur, v_elapsed, v_typed, v_uncorr, v_wpm, v_acc, v_integrity, v_challenge,
-    v_challenge_version, v_ranked, p->'metrics');
+  begin
+    insert into public.attempts (user_id, client_id, exercise_id, exercise_version,
+      scoring_version, normalization_version, mode, language, duration_sec, elapsed_ms,
+      typed_chars, uncorrected_errors, wpm, accuracy, integrity, challenge_date,
+      challenge_version, ranked_accepted, metrics)
+    values (uid, p->>'client_id', p->>'exercise_id', coalesce(p->>'exercise_version','v3'),
+      coalesce(p->>'scoring_version','v2.0.0'), p->>'normalization_version', v_mode, v_lang,
+      v_dur, v_elapsed, v_typed, v_uncorr, v_wpm, v_acc, v_integrity, v_challenge,
+      v_challenge_version, v_ranked, p->'metrics');
+  exception
+    when unique_violation then
+      -- Duplicate submission of the same logical attempt: idempotent no-op.
+      null;
+  end;
 
   return jsonb_build_object('accepted', v_ranked, 'integrity', v_integrity,
     'wpm', v_wpm, 'accuracy', v_acc, 'reasons', to_jsonb(v_reasons));
