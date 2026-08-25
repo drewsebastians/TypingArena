@@ -10,8 +10,9 @@ import {
   wasMigratedToAccount,
 } from "@/lib/history";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
+import { audioEvidence, flushQueue, hydrateFromRemote, markIdsSynced, typingEvidence } from "@/lib/sync";
 import {
-  deleteMyRemoteData,
+  deleteMyAccount,
   migrateLocalHistory,
   onAuthChange,
   signInWithEmail,
@@ -36,6 +37,27 @@ export default function AccountPanel({ onChanged }: { onChanged: () => void }) {
     return () => void unsub();
   }, []);
 
+  // Hydrate + flush whenever a session appears (covers fresh devices).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const report = await hydrateFromRemote();
+        await flushQueue();
+        if (!cancelled && report.addedTyping + report.addedDictation + report.addedTranscription > 0) {
+          setMsg(`Synced ${report.addedTyping + report.addedDictation + report.addedTranscription} attempts from your account.`);
+          onChanged();
+        }
+      } catch {
+        /* offline: local-first practice continues; retry on next load */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, onChanged]);
+
   if (!IS_REMOTE_CONFIGURED) {
     return (
       <div className="mt-4 rounded-xl border bg-zinc-50 p-4 text-xs text-zinc-500 dark:bg-zinc-900">
@@ -45,44 +67,23 @@ export default function AccountPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   const migrateIfNeeded = async () => {
-    if (!user || wasMigratedToAccount()) return;
+    if (!user || wasMigratedToAccount()) {
+      await flushQueue();
+      return;
+    }
     const all = exportAllResults();
-    const payloads: Parameters<typeof migrateLocalHistory>[0] = [
-      ...all.typing.map((r) => ({
-        exerciseId: r.exerciseId,
-        exerciseVersion: r.exerciseVersion,
-        scoringVersion: r.scoringVersion,
-        mode: r.mode,
-        language: r.language,
-        durationSec: r.durationSec,
-        elapsedMs: r.elapsedMs,
-        wpm: r.grossWpm,
-        accuracy: r.accuracy,
-        integrity: r.integrity,
-        challengeDate: r.challengeDate,
-        typedChars: r.typedChars,
-        uncorrectedErrors: r.uncorrectedErrors,
-      })),
-      ...all.dictation.map((r) => ({
-        exerciseId: r.exerciseId,
-        exerciseVersion: r.exerciseVersion,
-        scoringVersion: r.scoringVersion,
-        normalizationVersion: r.normalizationVersion,
-        mode: "dictation" as const,
-        language: r.language,
-        durationSec: 60,
-        elapsedMs: r.completionMs,
-        wpm: r.effectiveWpm,
-        accuracy: r.wordAccuracy,
-        integrity: r.integrity,
-        typedChars: 0,
-        uncorrectedErrors: 0,
-      })),
+    const payloads = [
+      // Migration copies stay practice locally-flagged server-side; the
+      // server re-derives everything and never auto-ranks imported rows.
+      ...all.typing.map((r) => ({ ...typingEvidence(r), integrity: r.integrity === "ranked" ? ("practice" as const) : r.integrity })),
+      ...all.dictation.map((r) => audioEvidence(r, "dictation")),
+      ...all.transcription.map((r) => audioEvidence(r, "transcription")),
     ];
     try {
-      await migrateLocalHistory(payloads);
+      const { migrated } = await migrateLocalHistory(payloads);
+      markIdsSynced(payloads.map((p) => p.clientId));
       markMigratedToAccount();
-      setMsg(`Imported ${payloads.length} local results to your account.`);
+      setMsg(`Imported ${migrated} local results. History now syncs across devices.`);
       onChanged();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Migration failed — local data kept.");
@@ -143,20 +144,19 @@ export default function AccountPanel({ onChanged }: { onChanged: () => void }) {
             </button>
             <button
               onClick={async () => {
-                if (!window.confirm("Delete ALL account data (attempts, profile)? This cannot be undone.")) return;
+                if (!window.confirm("Permanently delete your account AND all data (history, profile)? This cannot be undone.")) return;
                 try {
-                  await deleteMyRemoteData();
-                  await signOutUser();
-                  setMsg("All remote account data deleted.");
+                  await deleteMyAccount();
+                  setMsg("Account and all data permanently deleted.");
                   setUser(null);
-                  track("history_deleted", { scope: "remote-account" });
+                  track("account_deleted", {});
                 } catch (e) {
                   setErr(e instanceof Error ? e.message : "Deletion failed");
                 }
               }}
               className="rounded-full border border-red-300 px-4 py-1.5 text-red-700"
             >
-              Delete account data
+              Delete account
             </button>
           </div>
         </>

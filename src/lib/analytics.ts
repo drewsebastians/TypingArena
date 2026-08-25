@@ -38,6 +38,7 @@ export type EventName =
   | "account_created"
   | "account_login"
   | "account_signout"
+  | "account_deleted"
   | "history_deleted"
   | "history_viewed"
   | "next_recommended_start"
@@ -54,7 +55,19 @@ export type EventName =
   | "suspicious_burst_detected"
   | "session_unranked"
   | "noise_challenge_start"
-  | "heatmap_viewed";
+  | "heatmap_viewed"
+  | "career_start"
+  | "career_complete"
+  | "multiplayer_room_created"
+  | "multiplayer_joined"
+  | "multiplayer_finished"
+  | "team_created"
+  | "team_joined"
+  | "assignment_completed"
+  | "custom_test_created"
+  | "custom_test_completed"
+  | "assessment_created"
+  | "assessment_completed";
 
 const QUEUE_KEY = "ta:analytics_queue";
 let posthogLoading = false;

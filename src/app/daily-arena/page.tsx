@@ -21,6 +21,7 @@ import {
   type DailyBoardRow,
 } from "@/lib/remote";
 import { track } from "@/lib/analytics";
+import { typingEvidence } from "@/lib/sync";
 import type { DailyChallenge } from "@/lib/daily";
 import type { TypingResult } from "@/lib/types";
 
@@ -79,18 +80,9 @@ export default function DailyArena() {
       if (!IS_REMOTE_CONFIGURED || r.integrity !== "ranked") return;
       try {
         await submitAttempt({
-          exerciseId: `daily:${iso}:${r.exerciseId}`,
-          exerciseVersion: r.exerciseVersion,
-          scoringVersion: r.scoringVersion,
+          ...typingEvidence(r),
           mode: "daily",
-          language: r.language,
-          durationSec: r.durationSec,
-          elapsedMs: r.elapsedMs,
-          wpm: r.grossWpm,
-          accuracy: r.accuracy,
-          integrity: r.integrity,
-          typedChars: r.typedChars,
-          uncorrectedErrors: r.uncorrectedErrors,
+          exerciseId: `daily:${iso}:${r.exerciseId}`,
           challengeDate: iso ?? undefined,
           challengeVersion: "v2",
         });

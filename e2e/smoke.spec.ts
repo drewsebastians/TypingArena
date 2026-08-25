@@ -67,7 +67,7 @@ test.describe("audio modes — static assets", () => {
     const audio = page.locator("audio");
     await expect(audio).toHaveCount(1);
     const src = await audio.getAttribute("src");
-    expect(src).toMatch(/^\/audio\/dictation\/dict-en-\d+\.mp3$/);
+    expect(src).toMatch(/^\/audio\/dictation\/dict-en-\d+\.wav$/);
     await expect(audio).toHaveAttribute("preload", "metadata");
 
     // The file itself resolves.
@@ -136,6 +136,61 @@ test.describe("progress & privacy", () => {
   });
 });
 
+test.describe("roadmap features — honest states without backend", () => {
+  test("career mode lists all five tracks and is startable", async ({ page }) => {
+    await page.goto("/career");
+    await expect(page.getByRole("heading", { name: /career mode/i })).toBeVisible();
+    for (const track of ["Data Entry", "Office / Admin", "Numbers & Codes", "Punctuation Precision", "Transcription"]) {
+      await expect(page.getByText(track, { exact: true }).first()).toBeVisible();
+    }
+    // Assessment runner starts with the standard typing engine.
+    await page.getByRole("button", { name: /start assessment/i }).first().click();
+    await expect(page.getByLabel(/Type here/)).toBeVisible();
+  });
+
+  test("seasons shows monthly ladder with archive list", async ({ page }) => {
+    await page.goto("/seasons");
+    await expect(page.getByRole("heading", { name: /ranked seasons/i })).toBeVisible();
+    await expect(page.getByText(/live/).first()).toBeVisible(); // current season marker
+  });
+
+  test("multiplayer degrades honestly without backend", async ({ page }) => {
+    await page.goto("/multiplayer");
+    if (await page.getByText(/shared backend/i).count()) {
+      await expect(page.getByText(/shared backend/i).first()).toBeVisible();
+    } else {
+      await expect(page.getByRole("button", { name: /create room/i })).toBeVisible();
+    }
+  });
+
+  test("teams page explains requirements honestly", async ({ page }) => {
+    await page.goto("/teams");
+    await expect(page.getByRole("heading", { name: /teams & classrooms|tim & kelas/i })).toBeVisible();
+  });
+
+  test("custom tests explain practice-only policy", async ({ page }) => {
+    await page.goto("/custom");
+    await expect(page.getByRole("heading", { name: /custom tests/i })).toBeVisible();
+  });
+
+  test("employer assessments page renders creator/notice", async ({ page }) => {
+    await page.goto("/assessments");
+    await expect(page.getByRole("heading", { name: /skills assessments/i })).toBeVisible();
+  });
+
+  test("transcription library lists filterable clips", async ({ page }) => {
+    await page.goto("/transcription-library");
+    await expect(page.getByRole("heading", { name: /transcription library/i })).toBeVisible();
+    const cards = page.locator("main button.rounded-xl, main .grid > button");
+    const before = await cards.count();
+    expect(before).toBeGreaterThanOrEqual(4);
+    await page.getByRole("button", { name: "Indonesia", exact: true }).click();
+    const after = await cards.count();
+    expect(after).toBeLessThanOrEqual(before);
+    expect(after).toBeGreaterThanOrEqual(3);
+  });
+});
+
 test.describe("keyboard accessibility sanity", () => {
   test("result CTAs are reachable by keyboard", async ({ page }) => {
     await page.goto("/typing-test?duration=15");
@@ -149,3 +204,4 @@ test.describe("keyboard accessibility sanity", () => {
     expect((await focused).length).toBeGreaterThan(0);
   });
 });
+

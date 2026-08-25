@@ -6,7 +6,7 @@
 // interpretable if rules change.
 
 export type Language = "en" | "id";
-export type Mode = "sprint" | "copy-pro" | "dictation" | "transcription" | "numbers" | "punctuation" | "daily";
+export type Mode = "sprint" | "copy-pro" | "dictation" | "transcription" | "numbers" | "punctuation" | "daily" | "career" | "custom-practice";
 export type Difficulty = "easy" | "medium" | "hard";
 import type { IntegrityState } from "./integrity";
 export type { IntegrityState };

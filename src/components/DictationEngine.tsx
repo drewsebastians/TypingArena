@@ -24,6 +24,7 @@ import {
 import { PlaybackTracker, type PlaybackState, initialPlaybackState } from "@/lib/audioMetrics";
 import { BASE_PATH } from "@/lib/config";
 import { saveDictationResult } from "@/lib/history";
+import { audioEvidence, queueAttempt } from "@/lib/sync";
 import { track } from "@/lib/analytics";
 
 function newId(): string {
@@ -159,6 +160,7 @@ export default function DictationEngine({
       timestamp: now,
     };
     saveDictationResult(res);
+    void queueAttempt(audioEvidence(res, "dictation"));
     setSubmitted(res);
     onComplete?.(res);
     audioElRef.current?.pause();

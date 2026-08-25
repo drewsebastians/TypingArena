@@ -1,0 +1,33 @@
+name: Backend integration (local Supabase)
+
+# Proves the security model against a REAL database using the local Supabase
+# stack — no production credentials involved. Requires Docker, so it runs on
+# GitHub runners (not on dev machines without Docker).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  db-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local stack + apply migrations
+        run: |
+          # Repo ships supabase/config.toml + supabase/migrations — db reset
+          # starts the stack and replays every migration.
+          supabase db reset
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --no-save pg || npm install pg
+      - name: Run DB integration scenarios
+        run: node scripts/db-integration.mjs
+        env:
+          SUPABASE_DB_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres

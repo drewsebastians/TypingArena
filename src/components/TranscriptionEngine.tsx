@@ -19,6 +19,7 @@ import {
 import { PlaybackTracker, type PlaybackState, initialPlaybackState } from "@/lib/audioMetrics";
 import { BASE_PATH } from "@/lib/config";
 import { saveTranscriptionResult } from "@/lib/history";
+import { audioEvidence, queueAttempt } from "@/lib/sync";
 import { track } from "@/lib/analytics";
 
 function newId(): string {
@@ -164,6 +165,7 @@ export default function TranscriptionEngine({
       timestamp: Date.now(),
     };
     saveTranscriptionResult(res);
+    void queueAttempt(audioEvidence(res, "transcription"));
     setSubmitted(res);
     onComplete?.(res);
     audio.pause();

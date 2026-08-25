@@ -52,6 +52,13 @@ export default function Home() {
           { href: "/punctuation-typing-test", title: "Punctuation Test", desc: "Precision with symbols" },
           { href: "/daily-arena", title: "Daily Arena", desc: "Same challenge for everyone, daily" },
           { href: "/leaderboard", title: "Leaderboard", desc: "Ranked results by mode" },
+          { href: "/seasons", title: "Ranked Seasons", desc: "Monthly ladders & archives" },
+          { href: "/career", title: "Career Mode", desc: "Practice assessments with score bands" },
+          { href: "/multiplayer", title: "Multiplayer Race", desc: "Real-time rooms with friends" },
+          { href: "/teams", title: "Teams & Classrooms", desc: "Assignments + dashboards" },
+          { href: "/transcription-library", title: "Transcription Library", desc: "Browse all EN/ID clips" },
+          { href: "/custom", title: "Custom Tests", desc: "Your passages, shareable links" },
+          { href: "/assessments", title: "Employer Assessments", desc: "Invite-based skills checks" },
           { href: "/noise-challenge", title: "Noise Challenge", desc: "Dictation under noise levels" },
         ].map((c) => (
           <Link key={c.href} href={c.href} className="rounded-xl border bg-white p-4 hover:border-black dark:bg-zinc-900 dark:hover:border-white">

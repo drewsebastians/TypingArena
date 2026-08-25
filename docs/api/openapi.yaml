@@ -1,0 +1,69 @@
+openapi: "3.0.3"
+info:
+  title: TypingArena Tournament API
+  version: "1.0.0"
+  description: >
+    Controlled integration surface for external organizers. Authentication uses
+    API keys (hashed server-side). Standings are built exclusively from
+    SERVER-ACCEPTED ranked attempts; clients cannot fabricate entries.
+servers:
+  - url: https://{project}.functions.supabase.co/tournament-api
+    variables:
+      project:
+        default: your-project-ref
+security:
+  - ApiKeyAuth: []
+paths:
+  /v1/tournaments:
+    post:
+      summary: Create a tournament
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 80 }
+      responses:
+        "201": { description: Created }
+        "401": { description: Invalid or missing API key }
+        "429": { description: Rate limited }
+  /v1/tournaments/{id}:
+    get:
+      summary: Tournament details + standings (top 100)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: OK }
+        "404": { description: Not found }
+  /v1/tournaments/{id}/attach:
+    post:
+      summary: Attach a server-accepted ranked attempt to the tournament
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id]
+              properties:
+                client_id: { type: string, description: attempt client_id that was accepted ranked by the backend }
+                display_name: { type: string, maxLength: 24 }
+      responses:
+        "201": { description: Attached }
+        "404": { description: No accepted ranked attempt with that client_id }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer

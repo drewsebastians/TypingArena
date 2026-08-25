@@ -81,9 +81,11 @@ describe("audio content — static assets and manifest consistency", () => {
 
   it("every clip carries source + license provenance", () => {
     for (const clip of [...DICTATION_CLIPS, ...TRANSCRIPTION_CLIPS]) {
-      expect(clip.source).toContain("edge-tts-dev-v2");
+      expect(clip.source).toContain("piper-dev-v3");
       expect(clip.license.length).toBeGreaterThan(20);
-      expect(clip.speakerVoice).toMatch(/Neural$/);
+      expect(clip.speakerVoice).toMatch(/-medium$/);
     }
   });
 });
+
+

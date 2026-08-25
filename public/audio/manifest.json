@@ -1,155 +1,156 @@
 {
-  "generatedAt": "2026-08-24T15:01:51.374Z",
+  "generatedAt": "2026-08-24T23:59:39.053Z",
   "generator": {
-    "tool": "edge-tts",
-    "stage": "development-time only; runtime plays static files"
+    "tool": "piper-tts",
+    "stage": "development-time only; runtime plays static files",
+    "license": "MIT (engine + voice models); generated audio redistribution permitted, including commercial use"
   },
   "license": {
-    "source": "original narration authored for TypingArena; speech synthesized offline during development using Microsoft Edge neural voices via edge-tts",
-    "reviewStatus": "narrations reviewed against transcripts before shipping",
-    "note": "Before commercial production launch, re-record with human narration or a TTS license that explicitly grants redistribution rights. See docs/LICENSES.md."
+    "source": "original narration authored for TypingArena; speech synthesized offline during development with Piper TTS (MIT engine, MIT voice models from rhasspy/piper-voices)",
+    "rights": "Piper MIT license permits redistribution of generated outputs, including commercial use, with no attribution required",
+    "reviewStatus": "narrations reviewed against transcripts before shipping"
   },
   "contentVersion": "v2",
   "files": {
     "dict-en-001": {
-      "path": "/audio/dictation/dict-en-001.mp3",
-      "bytes": 27792,
-      "sha256": "b0cbb50ff20babd65ff5bf5a3d7b39cf4f01b9005b548d847be3e646dd43aa97",
-      "voice": "en-US-AriaNeural",
-      "rate": "-20%"
+      "path": "/audio/dictation/dict-en-001.wav",
+      "bytes": 177708,
+      "sha256": "5f3aceec6262096dbdb3e228f762fbab30d7677f24926b903f60d150dcdf4a75",
+      "voice": "en_US-amy-medium",
+      "speed": "slow"
     },
     "dict-en-002": {
-      "path": "/audio/dictation/dict-en-002.mp3",
-      "bytes": 32832,
-      "sha256": "a49580361315fdb33bd68d55bb84713709b1aed52ae01d3f081381cb740249da",
-      "voice": "en-US-AriaNeural",
-      "rate": "-20%"
+      "path": "/audio/dictation/dict-en-002.wav",
+      "bytes": 224812,
+      "sha256": "a4594a1e2fc4cea38d8b4fc2b6e62d76094de173313ae0a45ad2a0d5c4cfffe7",
+      "voice": "en_US-amy-medium",
+      "speed": "slow"
     },
     "dict-en-003": {
-      "path": "/audio/dictation/dict-en-003.mp3",
-      "bytes": 47520,
-      "sha256": "582b542eff222b6bf5c8e6e77db0b27ef9da4412f01811dc03e27ab85a50df9a",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-en-003.wav",
+      "bytes": 353324,
+      "sha256": "06970653ed76c769cdef0dd7b1101ee6bdc8901b10b015610313c87ba08111e9",
+      "voice": "en_US-joe-medium",
+      "speed": "medium"
     },
     "dict-en-004": {
-      "path": "/audio/dictation/dict-en-004.mp3",
-      "bytes": 32112,
-      "sha256": "39fe6272f9fcfb63e03a30b8444e3b9a7e3d5c33e8ccd8e4f839fa048085c653",
-      "voice": "en-US-AriaNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-en-004.wav",
+      "bytes": 212012,
+      "sha256": "a960ab8e5b25cafa4666e9a89de1a36d35930c42b5dbfadc48c10d932585afaf",
+      "voice": "en_US-amy-medium",
+      "speed": "medium"
     },
     "dict-en-005": {
-      "path": "/audio/dictation/dict-en-005.mp3",
-      "bytes": 29088,
-      "sha256": "6613082cb9272166eed133add202c5d1488c0f47cbbd3071a08a39f1597a3b0e",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+22%"
+      "path": "/audio/dictation/dict-en-005.wav",
+      "bytes": 192044,
+      "sha256": "3395696a0e1cffbd4087c913600c94df1d631ff045834ffdaf9f11976b171f31",
+      "voice": "en_US-joe-medium",
+      "speed": "fast"
     },
     "dict-en-006": {
-      "path": "/audio/dictation/dict-en-006.mp3",
-      "bytes": 47232,
-      "sha256": "31bfe8deaead832bae7f8493553148c8ab8c8ad885faa3a6b9eab4b98612e561",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-en-006.wav",
+      "bytes": 311340,
+      "sha256": "d8f8e55dde34538cc977c17f71fdac3cd82257b8ff3a70bfc0e67861ad79f9b1",
+      "voice": "en_US-joe-medium",
+      "speed": "medium"
     },
     "dict-en-007": {
-      "path": "/audio/dictation/dict-en-007.mp3",
-      "bytes": 50976,
-      "sha256": "7a0b3d68fe0a098e82ff6a044f1745cbbfc30ac65819c7e3b670a6b5ad06f0e0",
-      "voice": "en-US-AriaNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-en-007.wav",
+      "bytes": 430124,
+      "sha256": "938ab9f50313f2ac76dbb65cc76b58120aac18f5b64460f7712f62e68a1fd13e",
+      "voice": "en_US-amy-medium",
+      "speed": "medium"
     },
     "dict-en-008": {
-      "path": "/audio/dictation/dict-en-008.mp3",
-      "bytes": 35280,
-      "sha256": "bfaea19911702a0d08e163a5377a601c4f4714316e7fbaccab216e3dd3e9beee",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+22%"
+      "path": "/audio/dictation/dict-en-008.wav",
+      "bytes": 277036,
+      "sha256": "eff82d306c735e976576f24e9b8abb9aae6f071ff4cfd5f517cdf83501902a72",
+      "voice": "en_US-joe-medium",
+      "speed": "fast"
     },
     "dict-id-001": {
-      "path": "/audio/dictation/dict-id-001.mp3",
-      "bytes": 42624,
-      "sha256": "dc8483bb40c144d9a4d2f533e00167cd8934225455fb77757f8bda24f574b25c",
-      "voice": "id-ID-GadisNeural",
-      "rate": "-20%"
+      "path": "/audio/dictation/dict-id-001.wav",
+      "bytes": 238636,
+      "sha256": "b5f5a2f44c0b73d9b810ecb4d89979031e7758f9ef64bcace8af7b203eb41210",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "slow"
     },
     "dict-id-002": {
-      "path": "/audio/dictation/dict-id-002.mp3",
-      "bytes": 42480,
-      "sha256": "30a244b9f724d67be4b9c6fae4ea0849cec0ec194d3acff517922614388d1b59",
-      "voice": "id-ID-GadisNeural",
-      "rate": "-20%"
+      "path": "/audio/dictation/dict-id-002.wav",
+      "bytes": 231980,
+      "sha256": "9ce22c3ec1262ed6e862b4ed61baec2108a564c4987849159f188300a4ebec47",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "slow"
     },
     "dict-id-003": {
-      "path": "/audio/dictation/dict-id-003.mp3",
-      "bytes": 22608,
-      "sha256": "2cd6f974bbcb93c5a0d4dd1c7fdcdb3397f2e98c0224e8befc48b342cbe7ba35",
-      "voice": "id-ID-ArdiNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-id-003.wav",
+      "bytes": 155180,
+      "sha256": "82587bb3797936d74eb70a8f8ea27f965e161bcdf5c8a6901db2428704df11cf",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "medium"
     },
     "dict-id-004": {
-      "path": "/audio/dictation/dict-id-004.mp3",
-      "bytes": 26208,
-      "sha256": "9185af211ac99161bba60e76deb0065061f9576b5bce3c7d67858328b952799e",
-      "voice": "id-ID-ArdiNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-id-004.wav",
+      "bytes": 207404,
+      "sha256": "64ca40f4d9cc15de40696f341e91218bc9fef51d05294733a26580ccf578b7be",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "medium"
     },
     "dict-id-005": {
-      "path": "/audio/dictation/dict-id-005.mp3",
-      "bytes": 37152,
-      "sha256": "34bd15ade6446e311ba112def2bd26e4f48b0183d1b4d5c399a58da55b20a1e3",
-      "voice": "id-ID-GadisNeural",
-      "rate": "+0%"
+      "path": "/audio/dictation/dict-id-005.wav",
+      "bytes": 207916,
+      "sha256": "83503712c8344be926ef7754d0242adba2c3339e6002a590d9709d7b7b9e373d",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "medium"
     },
     "dict-id-006": {
-      "path": "/audio/dictation/dict-id-006.mp3",
-      "bytes": 33696,
-      "sha256": "93678e4c8dbec3ec5f75cb467eaf8cf92f769e1f8bab9492a326f3eb3039bbf4",
-      "voice": "id-ID-ArdiNeural",
-      "rate": "+22%"
+      "path": "/audio/dictation/dict-id-006.wav",
+      "bytes": 334380,
+      "sha256": "822c434c6db1979bce4b943a38525e257692e2cb956cf4d07335dda54818e9ef",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "fast"
     },
     "trans-en-001": {
-      "path": "/audio/transcription/trans-en-001.mp3",
-      "bytes": 246960,
-      "sha256": "0b39462912174a6e6bbc9dfddf34afb74b53abcd9310434c74713b7f26055231",
-      "voice": "en-US-AriaNeural",
-      "rate": "+0%"
+      "path": "/audio/transcription/trans-en-001.wav",
+      "bytes": 1768492,
+      "sha256": "f3ec10ca3a4669ad80590c74179891deb1490f49d01ffbcaf57af20713115f28",
+      "voice": "en_US-amy-medium",
+      "speed": "medium"
     },
     "trans-en-002": {
-      "path": "/audio/transcription/trans-en-002.mp3",
-      "bytes": 222192,
-      "sha256": "a38d605cc6d07f8456e957f14a9245d98d0fd8d804ab29b11192121e211a7431",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+0%"
+      "path": "/audio/transcription/trans-en-002.wav",
+      "bytes": 1458220,
+      "sha256": "efc8c9122bae1a863d0260f9887902c6a8fdb4ca1b683ffe83ea6320ab69184a",
+      "voice": "en_US-joe-medium",
+      "speed": "medium"
     },
     "trans-en-003": {
-      "path": "/audio/transcription/trans-en-003.mp3",
-      "bytes": 200304,
-      "sha256": "d132d7d9feb4277f97f5f7640f5dd970e179d2967745752adae088ec408c3da7",
-      "voice": "en-US-AndrewNeural",
-      "rate": "+10%"
+      "path": "/audio/transcription/trans-en-003.wav",
+      "bytes": 1382956,
+      "sha256": "23b9f2bac1ff5e1eb1d62a2ac26f573809e9d91a48b9dfd54785a5e937919da3",
+      "voice": "en_US-joe-medium",
+      "speed": "fast"
     },
     "trans-id-001": {
-      "path": "/audio/transcription/trans-id-001.mp3",
-      "bytes": 306000,
-      "sha256": "cfce82b7066f50961c53ab2bb8e13eee46028485daceb8291cf37acb3fb2b24c",
-      "voice": "id-ID-GadisNeural",
-      "rate": "+0%"
+      "path": "/audio/transcription/trans-id-001.wav",
+      "bytes": 1967660,
+      "sha256": "99361270b4902b2dfb3ba67d48063761cc3870a0382d4421ffdd0e26848c135b",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "medium"
     },
     "trans-id-002": {
-      "path": "/audio/transcription/trans-id-002.mp3",
-      "bytes": 244224,
-      "sha256": "33fd361961992e5b477dbc697b080000ab1caf93be34f35117bd040d9433f03a",
-      "voice": "id-ID-ArdiNeural",
-      "rate": "+0%"
+      "path": "/audio/transcription/trans-id-002.wav",
+      "bytes": 1910316,
+      "sha256": "55a893b887185ac87e5d4a6a29a039b3b34f24025fa6659350834b4467868730",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "medium"
     },
     "trans-id-003": {
-      "path": "/audio/transcription/trans-id-003.mp3",
-      "bytes": 190656,
-      "sha256": "54b4460763e5cf3669f9d54e9ab3bdf8e5fd4daa01c7830181e55a4eed259dbe",
-      "voice": "id-ID-ArdiNeural",
-      "rate": "+10%"
+      "path": "/audio/transcription/trans-id-003.wav",
+      "bytes": 1744940,
+      "sha256": "03bae2185e2054ee287e091ed16f911898d7930cabe146a48903a02fc5c9705a",
+      "voice": "id_ID-news_tts-medium",
+      "speed": "fast"
     }
   }
 }

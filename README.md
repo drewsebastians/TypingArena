@@ -1,113 +1,79 @@
 # TypingArena — Typing / Dictation / Transcription Arena
 
-> **Train and prove how accurately and quickly you can turn what you see or hear into text.**
-> One arena for typing, listening, dictation and transcription performance.
+> **Train and prove how accurately and quickly you turn what you see or hear into text.**
+> One arena for typing, dictation, transcription, data entry, listening skill,
+> progression, competition, career practice, teams/classrooms, and user-created challenges.
 
 Free-first • anonymous practice • **no AI inference at runtime** • English + Bahasa Indonesia.
 
----
-
-## What this is
-
-Not another WPM calculator: a human input-performance arena combining
-**timed typing → dictation → transcription → analytics → deterministic adaptive
-practice → shared competition**.
-
-- Every exercise comes from a reviewed, versioned corpus. Nothing is generated
-  at request time.
-- Scoring is deterministic, documented and versioned (`docs/ADR-003-scoring.md`).
-- Dictation/transcription play **static audio files** generated during
-  development; the runtime never calls any TTS/ASR/LLM service (CI enforces it).
-
-## Status labels used in this README
-
-**COMPLETE** — works as described, with tests. **PARTIAL** — core works, named
-gaps remain. **DEFERRED** — deliberately not built yet. Nothing in this README
-is claimed "shipped" that is actually local-only or simulated.
+Live: https://drewsebastians.github.io/TypingArena/
 
 ---
 
-## Implemented now
+## Product overview
 
-### Typing modes — COMPLETE
-- Sprint 15/30/60s + **true 5-minute endurance**: tests run the full clock over an
-  endless deterministic stream assembled from the reviewed corpus — finishing a
-  passage never ends a timed test.
-- Gross/net WPM, CPM, typed-scope accuracy (untouched text is never penalized).
-- Per-key & bigram error profiles from event-level tracking (alignment-robust),
-  error heatmap, correction latency, corrected vs uncorrected errors.
-- Copy Pro / punctuation precision and Numbers & Data pools (EN+ID).
-- Integrity signals: paste blocked + flagged, impossible-burst detection,
-  de-duplicated focus-loss counting → ranked / practice / flagged.
+| Area | What ships |
+|---|---|
+| **Typing** | Sprint 15/30/60s + true 5-minute endurance over an endless deterministic stream; gross/net WPM, typed-scope accuracy, aligned per-key/bigram analysis, correction latency |
+| **Dictation** | Static EN/ID audio clips, strict + normalized + word + punctuation scoring, real playback analytics (replays, actual seconds, pauses, seeks) |
+| **Transcription** | Full-clip sprint mode plus a browsable **library** (`/transcription-library`) with language/difficulty/length/topic filters |
+| **Career Mode** | Five practice-assessment tracks (data entry, office/admin, numbers & codes, punctuation precision, transcription) with transparent score bands. *Skill benchmark — explicitly not certification* |
+| **Competition** | Server-authoritative ranked leaderboard, Daily Arena (Asia/Jakarta product day), cross-device friend challenges, **monthly ranked seasons** (`/seasons`), **real-time multiplayer races** (`/multiplayer`) |
+| **Collaboration** | **Teams & classrooms** (`/teams`): rooms, join codes, assignments, aggregate dashboards; privacy-first (usernames only) |
+| **Custom content** | **Custom tests** (`/custom`): user passages with sanitized content and unlisted share links — practice-only, never ranked |
+| **Employer tools** | **Skills assessments** (`/assessments`): module sequences, invite-token candidate flow (no signup), private admin summaries |
+| **Integration** | **Tournament API**: authenticated edge-function surface with standings built only from server-accepted attempts (`supabase/functions/tournament-api`, spec: `docs/api/openapi.yaml`) |
 
-### Dictation — COMPLETE (audio library PARTIAL)
-- Real static audio clips, English + Indonesian, strict + normalized scoring,
-  word accuracy, punctuation accuracy, effective WPM.
-- Playback analytics measured from media events: initial play ≠ replay,
-  actual seconds heard, pause count, seek count, replay ratio against real duration.
-- Noise Challenge layers filtered noise at four honest difficulty tiers.
+## No-runtime-AI policy
 
-### Transcription Sprint — COMPLETE (library PARTIAL)
-- Multi-clip EN/ID workspace, full metrics incl. active typing time,
-  corrections, replay ratio; persistent history; cross-mode recommendations.
+The website runtime never calls LLMs, ASR, runtime TTS, or any generative
+service. All exercises come from reviewed static corpora; all audio is
+pre-generated **Piper TTS** output whose MIT license permits redistribution
+(including commercial use) — see `docs/LICENSES.md`. CI fails the build if
+`speechSynthesis` ever appears in a production bundle or if a placeholder
+domain leaks into output.
 
-### Progress & adaptation — COMPLETE
-- Anonymous local history (typing/dictation/transcription), streaks on the
-  Asia/Jakarta product day (one qualifying activity per day, all modes count),
-  XP/levels across modes.
-- Multi-skill matrix: typing weaknesses, dictation-derived listening weakness
-  (score + replay reliance), transcription depth — feeding a transparent
-  deterministic next-exercise recommendation.
-
-### Shared competition — COMPLETE code path / needs credentials to activate
-Architecture: **static frontend + Supabase direct client + RLS**
-(`docs/ADR-001-deployment.md`, schema in `supabase/migrations/0001_init.sql`):
-- Ranked leaderboard by mode/language/duration; Daily Arena shared board per
-  product date; one ranked daily attempt per user per day.
-- Cross-device friend challenges backed by central records (unguessable ids,
-  immutable payload, result comparison) — links work on other devices/browsers.
-- Optional magic-link accounts, public username separated from private email,
-  one-shot migration of anonymous history, account-data deletion.
-- **Without credentials the app degrades honestly**: setup notices instead of
-  boards, no fabricated players ever.
-
-### Production plumbing — COMPLETE
-- Config-driven canonical URLs (sitemap, robots, metadataBase); private
-  `/progress` non-indexed; localized EN/ID tool pages; every indexed page is a
-  working tool.
-- Consent-gated PostHog/GA4 adapter with the blueprint event dictionary;
-  gracefully inert without configuration or consent.
-- Reserved ad slots outside active tasks; provider loads only when configured.
-- Privacy page, data export, one-click deletion of local/account data.
-
----
-
-## Site architecture (SEO)
+## Architecture
 
 ```
-/                          hero + instant test + discovery
-/typing-test               15/30/60s (?duration=&mode=)
-/typing-test/1-minute      canonical 60s page
-/typing-test/5-minute      endurance 300s
-/typing-test/indonesian    ID pool
-/tes-mengetik              localized Indonesian landing
-/dictation                 hub (EN/ID toggle)
-/dictation/english | /dictation/indonesian
-/transcription-practice    multi-clip sprint
-/data-entry-test           numbers/dates/codes
-/punctuation-typing-test   precision mode
+Next.js 16 (App Router, TS strict, static export)
+├── Domain logic      src/lib (scoring v2, alignment, sync queue, career, seasons…)
+├── UI                src/components, src/app (route-level code splitting)
+└── Shared backend    Supabase (Postgres + RLS + RPC + Realtime + optional Edge Functions)
+
+Trust boundary: clients submit compact EVIDENCE via submit_attempt() RPC.
+Postgres recomputes wpm/accuracy from counts, decides integrity/ranked itself,
+and only server-accepted rows appear in public views. A tampered client cannot
+publish fabricated ranked scores.
+```
+
+Deployment decision (ADR-001): **static frontend + Supabase direct client +
+DB-side validation**. Works on GitHub Pages today; identical build deploys to
+Vercel/Netlify without code changes.
+
+## Modes & routes
+
+```
+/                          instant test + discovery
+/typing-test[/1-minute|/5-minute|/indonesian]   timed sprints
+/tes-mengetik              Indonesian landing
+/dictation[/english|/indonesian]                listen & type
+/transcription-practice    full-clip sprints
+/transcription-library     browsable clip library
+/data-entry-test           numbers, dates, codes
+/punctuation-typing-test   Copy Pro precision
 /noise-challenge           noise-tiered dictation
-/daily-arena               today's shared challenge
-/leaderboard               ranked results (real backend required)
+/career                    practice assessments (5 tracks)
+/daily-arena               shared daily challenge
+/leaderboard · /seasons    ranked boards · monthly seasons
 /friends                   cross-device challenges
-/progress                  PRIVATE — noindex
+/multiplayer               realtime race rooms
+/teams                     team/classroom rooms + dashboard
+/custom                    user-created practice tests
+/assessments               employer skills assessments
+/progress                  PRIVATE history (noindex)
 /privacy                   data practices
 ```
-
-## Tech stack
-
-Next.js 16 (App Router, TypeScript strict, static export) · Tailwind 4 ·
-Vitest (+ Testing Library) · Playwright · optional Supabase · optional PostHog.
 
 ## Getting started
 
@@ -115,107 +81,109 @@ Vitest (+ Testing Library) · Playwright · optional Supabase · optional PostHo
 npm install
 npm run dev          # http://localhost:3000 — everything works locally
 npm run lint && npm run typecheck && npm test
-npm run build        # static export to out/
+npm run build        # static export → out/
 npm run serve:static # inspect production output on :4173
-npm run test:e2e     # Playwright against out/ (build first; browsers: npx playwright install chromium)
-npm run generate:audio  # regenerate static clips (requires: pip install edge-tts)
+npm run test:e2e     # Playwright against out/
+npm run generate:audio  # regenerate clips (pip install piper-tts)
+node scripts/check-production-readiness.mjs   # deploy gate
 ```
 
-### Environment variables
+## Environment variables (.env.example)
 
-Copy `.env.example` → `.env.local`. All values are optional; see the file for
-each variable's effect. Public values only — nothing secret belongs here.
+All optional for demo builds (shared features degrade honestly). Production
+builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
+**fail closed** unless `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` are set. Optional: PostHog/GA4 keys
+(consent-gated), AdSense client id. Never commit secrets.
 
-### Shared competition setup
+## Shared backend setup (one-time operator step)
 
 1. Create a free Supabase project.
-2. Run `supabase/migrations/0001_init.sql` in the SQL editor (schema, RLS,
-   public views, helper functions).
-3. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` and rebuild.
-4. Schedule `select purge_expired_challenges();` daily (pg_cron or equivalent).
-5. Enable magic-link auth (Auth → Email). Disable confirmations if you want
-   frictionless first sign-in.
+2. Apply migrations in order: `supabase/migrations/0001_init.sql`,
+   `0002_server_authoritative_and_roadmap.sql`.
+3. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. Enable Email (magic-link) auth; set Site URL to your origin.
+5. Schedule `select purge_expired();` daily (pg_cron).
+6. Optional: `supabase functions deploy tournament-api` for the Tournament API;
+   mint keys by inserting sha256(key) hashes into `public.api_keys`.
 
-## Scoring spec (summary)
+### Local backend testing (CI runs this on every push)
 
-| Metric | Definition |
-|---|---|
-| Gross WPM | typedChars / 5 / minutes |
-| Net WPM | (typedChars − uncorrectedErrors) / 5 / minutes |
-| Accuracy | correctChars / typedChars — typed scope only |
-| Errors | raw events = corrected + uncorrected (precise event pairing) |
-| Correction latency | wrong-entry creation → its removing backspace |
-| Per-key / bigram | exposure-weighted, accumulated at keystroke time |
-| Dictation scores | strict (case+punct aligned), normalized (v2 rules), word alignment, punctuation alignment |
-| Replay ratio | actual played seconds ÷ real clip duration |
+```bash
+supabase db reset                       # local stack from supabase/config.toml
+node scripts/db-integration.mjs         # proves RLS, ranked acceptance/rejection,
+                                        # daily binding, idempotency, deletion…
+```
 
-Full semantics + rationale: `docs/ADR-003-scoring.md`. Every result stores
-exercise/scoring/normalization/challenge versions for reproducibility.
+`.github/workflows/db-integration.yml` executes these scenarios against a real
+local database in CI — no production credentials involved.
+
+## Cross-device sync (how it works)
+
+Every scored attempt (typing, dictation, transcription, career, custom) is
+queued locally the moment it is saved and flushed through the authoritative RPC
+when signed in. Offline items retry automatically. Full result objects travel
+in `attempts.metrics`, so signing in on a NEW device hydrates identical local
+history (deduped threefold: result id == `client_id`, DB unique index, merge
+check). Streak/skill profile then rebuild from merged history.
+
+## Ranked validation model
+
+Client sends evidence (counts, flags, challenge refs). Server derives wpm =
+typed/5/min and accuracy = correct/typed, compares to claims (>10% drift ⇒
+flagged), enforces plausibility (<220 WPM), binds Daily submissions to today's
+canonical Asia/Jakarta challenge, allows one ranked daily per day, and is
+idempotent per attempt id. Public views expose only accepted ranked rows.
+This is a materially stronger boundary than trusting the browser — while still
+being heuristic anti-cheat, not formal proctoring.
+
+## Analytics
+
+Consent-gated PostHog/GA4 adapter (`src/lib/analytics.ts`) covering the full
+event dictionary: acquisition, per-mode start/complete, audio adoption,
+cross-mode conversion, Daily participation, leaderboard views, friend/multiplayer/
+team/career/assessment usage, integrity signals, shares. With PostHog
+configured, D1/D7/D30 retention and funnels are measurable out of the box.
+
+## Ads
+
+Reserved slots on discovery/result pages only (never inside active tasks, no
+autoplay audio). Real AdSense markup activates via
+`NEXT_PUBLIC_ADSENSE_CLIENT`; approval of the publisher account is an external
+state — integration is complete either way.
 
 ## Testing
 
-- **Unit/component (Vitest, 100+ assertions):** alignment robustness, WPM math,
-  normalization (Unicode NFC, apostrophes, Indonesian), correction semantics,
-  burst detection, integrity classification, Jakarta-day boundaries, daily
-  determinism, endless stream guarantees, playback reducer, streak logic,
-  skill-matrix derivation, corpus/audio-manifest consistency, plus engine
-  behaviour: timer starts on first key, does NOT finish when a passage ends,
-  finishes exactly at duration, paste flagging, version recording.
-- **E2E (Playwright, Chromium desktop + mobile):** full-clock sprints, 5-minute
-  HUD, untouched-text accuracy, paste blocking, static audio resolution (EN/ID),
-  transcription flow, honest degradation of daily/leaderboard/friends without a
-  backend, robots/sitemap hygiene, keyboard reachability.
-- **Production guard:** CI fails if `speechSynthesis` appears in any bundle or a
-  placeholder domain leaks into output.
+- **130 unit/component tests** (Vitest): scoring, alignment, corrections,
+  integrity/burst, Jakarta-day math, daily determinism, endless stream,
+  playback reducer, streaks, skill matrix, corpus+audio-manifest consistency,
+  sync evidence/merge, career bands, season math, sanitization, engine timer
+  semantics, paste blocking, versioning.
+- **23 Playwright E2E specs × desktop + mobile**: full-clock sprints, 5-min HUD,
+  untouched-text accuracy, static audio resolution (EN/ID .wav), transcription
+  flow, honest degradation of shared features offline, library filtering,
+  career track list, keyboard reachability, robots/sitemap hygiene.
+- **DB integration suite** (CI): RLS denial, ranked accept/forgery-reject,
+  daily date binding, idempotent resubmission, custom-test visibility, team
+  join, complete account deletion.
 
-## Analytics & measurement
+## Documentation index
 
-`track()` feeds the consent-gated PostHog/GA4 adapters plus a capped local debug
-queue. Event dictionary lives in `src/lib/analytics.ts` (acquisition, mode
-start/complete, conversion, integrity, sharing, competition). With PostHog
-configured: D1/D7/D30 retention, typing→dictation→transcription funnels, Daily
-Arena participation, share rate, suspected-cheat rate are all measurable.
-North star: meaningful completed sessions per returning user; strategic ratio:
-audio-mode repeat users vs typing-only repeat users.
-
-## Monetization stance
-
-Free + reserved ad slots (result/discovery zones only; never inside active
-tasks, no autoplay audio). Provider activates via `NEXT_PUBLIC_ADSENSE_CLIENT`.
-Ad-free premium architecture remains trivially feasible.
-
-## Privacy summary
-
-Anonymous-first; minimal storage; no raw keystroke streams (summarized error
-profiles only); public username decoupled from private email; consent-gated
-analytics; export + delete controls on `/progress`; friend challenge records
-expire after 30 days. Details: `/privacy`.
-
-## Honest limitations
-
-- Shared features require Supabase credentials; until configured they show
-  setup notices rather than pretending to work.
-- Anti-cheat is heuristic; the DB hides non-ranked rows but cannot prove a
-  human typed. Not certification.
-- Account row deletion (auth.users) requires Dashboard/support action; all
-  product data deletes via the app.
-- Audio uses dev-time neural narration — see licensing note in
-  `docs/LICENSES.md`.
-
-## Roadmap
-
-- **MVP+:** larger clip libraries, career tracks (data-entry/admin), heatmap
-  polish, streak refinements.
-- **Later (deferred):** ranked seasons, real-time multiplayer, classroom rooms,
-  custom test creation, tournament API — each gated behind retention evidence.
+- `docs/ADR-001-deployment.md` — deployment architecture decision
+- `docs/ADR-002-product-day.md` — Asia/Jakarta product-day boundary
+- `docs/ADR-003-scoring.md` — scoring v2 semantics + integrity model
+- `docs/LICENSES.md` — content/audio rights record (closed: Piper MIT)
+- `docs/api/openapi.yaml` — Tournament API v1 specification
+- `BLUEPRINT_COMPLETION_REPORT.md` — final status matrix with evidence
 
 ## Contributing
 
-PRs welcome. Keep runtime deterministic: reviewed corpora with derived
-metadata, static assets with license records, no runtime AI of any kind.
-Run `npm run lint && npm run typecheck && npm test` before submitting.
+PRs welcome. Keep runtime deterministic: reviewed corpora, static licensed
+assets, no runtime AI. Run `npm run lint && npm run typecheck && npm test`
+before submitting.
 
 ## License
 
-Code: ISC. Content: original works for TypingArena (see `docs/LICENSES.md`
-for audio provenance and re-verification requirements).
+Code: ISC. Content/audio: original works; audio generated with MIT-licensed
+Piper voices — redistribution permitted including commercial use
+(`docs/LICENSES.md`).

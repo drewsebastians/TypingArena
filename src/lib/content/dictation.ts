@@ -11,7 +11,6 @@ interface RawClip {
   kind: "dictation" | "transcription";
   language: "en" | "id";
   voice: string;
-  rate: string;
   speed?: string;
   difficulty: "easy" | "medium" | "hard";
   topic: string;
@@ -22,15 +21,14 @@ interface RawClip {
 
 const CLIPS = clipData.clips as RawClip[];
 
+const SPEED_FACTOR: Record<string, number> = { slow: 0.8, medium: 1, fast: 1.18 };
+
 /** Advisory duration estimate (words ÷ speaking pace). The player measures the
  *  real media duration for all scoring; this only seeds UI before load. */
-function estimateSeconds(transcript: string, rate: string): number {
+function estimateSeconds(transcript: string, speed: string): number {
   const words = transcript.trim().split(/\s+/).length;
-  const baseWps = 2.6; // ~156 wpm narration at +0%
-  const factor = rate.startsWith("-") ? 1 / (1 + Math.abs(parseFloat(rate.slice(0, -1)) / 100) * 0.9)
-    : rate === "+0%" ? 1
-    : 1 / (1 + (parseFloat(rate.slice(1)) / 100) * 0.8);
-  return Math.max(2, Math.round((words / baseWps) * factor));
+  const baseWps = 2.6; // ~156 wpm narration at medium
+  return Math.max(2, Math.round(words / (baseWps * (SPEED_FACTOR[speed] ?? 1))));
 }
 
 const LICENSE = clipData.license.source;
@@ -39,13 +37,13 @@ export const DICTATION_CLIPS: DictationItem[] = CLIPS.filter((c) => c.kind === "
   id: c.id,
   language: c.language,
   transcript: c.transcript,
-  audioPath: `/audio/dictation/${c.id}.mp3`,
-  durationSec: estimateSeconds(c.transcript, c.rate),
+  audioPath: `/audio/dictation/${c.id}.wav`,
+  durationSec: estimateSeconds(c.transcript, c.speed ?? "medium"),
   speed: (c.speed as SpeechSpeed) ?? "medium",
   difficulty: c.difficulty,
   topic: c.topic,
   speakerVoice: c.voice,
-  source: `edge-tts-dev-v2 (${c.voice} @ ${c.rate})`,
+  source: `piper-dev-v3 (${c.voice}, ${c.speed ?? "medium"})`,
   license: LICENSE,
 }));
 
@@ -53,12 +51,12 @@ export const TRANSCRIPTION_CLIPS: TranscriptionItem[] = CLIPS.filter((c) => c.ki
   id: c.id,
   language: c.language,
   transcript: c.transcript,
-  audioPath: `/audio/transcription/${c.id}.mp3`,
-  durationSec: estimateSeconds(c.transcript, c.rate),
+  audioPath: `/audio/transcription/${c.id}.wav`,
+  durationSec: estimateSeconds(c.transcript, c.speed ?? "medium"),
   difficulty: c.difficulty,
   topic: c.topic,
   speakerVoice: c.voice,
-  source: `edge-tts-dev-v2 (${c.voice} @ ${c.rate})`,
+  source: `piper-dev-v3 (${c.voice}, ${c.speed ?? "medium"})`,
   license: LICENSE,
   minDurationSec: c.minDurationSec ?? 30,
   tags: c.tags ?? [],

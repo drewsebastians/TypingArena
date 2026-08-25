@@ -21,6 +21,7 @@ import { CorrectionTracker } from "@/lib/corrections";
 import { classifyIntegrity, detectBurst } from "@/lib/integrity";
 import { TestStream } from "@/lib/stream";
 import { saveTypingResult } from "@/lib/history";
+import { queueAttempt, typingEvidence } from "@/lib/sync";
 import { track } from "@/lib/analytics";
 import type { BigramStat, CorpusItem, Language, Mode, PerKeyStat, TypingResult } from "@/lib/types";
 
@@ -149,6 +150,8 @@ export default function TypingEngine({
     };
     saveTypingResult(result);
     onComplete?.(result);
+    // Cross-device sync: queued locally, flushed via server-authoritative RPC.
+    void queueAttempt(typingEvidence(result));
 
     track("typing_test_complete", {
       wpm: result.grossWpm,

@@ -1,9 +1,16 @@
-name: Deploy to GitHub Pages
+name: Deploy
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target"
+        required: true
+        default: demo
+        type: choice
+        options: [demo, production]
 
 permissions:
   contents: read
@@ -24,9 +31,26 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
+      # Production deployments (workflow_dispatch target=production) require the
+      # shared backend configuration as repo/environment secrets; demo builds
+      # degrade honestly instead.
+      - name: Production readiness gate
+        run: node scripts/check-production-readiness.mjs
+        env:
+          DEPLOY_TARGET: ${{ inputs.target || 'demo' }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - run: npm run build
         env:
           GITHUB_PAGES: "true"
+          DEPLOY_TARGET: ${{ inputs.target || 'demo' }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+          NEXT_PUBLIC_ADSENSE_CLIENT: ${{ secrets.NEXT_PUBLIC_ADSENSE_CLIENT }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
