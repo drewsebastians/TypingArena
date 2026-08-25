@@ -36,23 +36,23 @@ create table if not exists public.rate_limits (
 );
 delete from public.rate_limits where window_start < now() - interval '1 hour';
 
-create or replace function public.bump_rate_limit(bucket text, max_events int, per_interval interval)
+create or replace function public.bump_rate_limit(p_bucket text, p_max_events int, p_interval interval)
 returns boolean language plpgsql security definer set search_path = public as $$
 declare
   ok boolean := false;
 begin
   insert into public.rate_limits (bucket, window_start, count)
-  values (bucket, now(), 1)
+  values (p_bucket, now(), 1)
   on conflict (bucket) do update set
     count = case
-      when public.rate_limits.window_start < now() - per_interval then 1
+      when public.rate_limits.window_start < now() - p_interval then 1
       else public.rate_limits.count + 1 end,
     window_start = case
-      when public.rate_limits.window_start < now() - per_interval then now()
+      when public.rate_limits.window_start < now() - p_interval then now()
       else public.rate_limits.window_start end;
-  select rl.count <= max_events into ok
+  select rl.count <= p_max_events into ok
   from public.rate_limits rl
-  where rl.bucket = bump_rate_limit.bucket;
+  where rl.bucket = p_bucket;
   return coalesce(ok, false);
 end; $$;
 
@@ -400,26 +400,31 @@ create policy "results insert (rate-limited)" on public.room_results for insert 
 
 create or replace function public.create_room(p jsonb)
 returns text language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); code text;
-  alphabet text := '23456789ABCDEFGHJKMNPQRSTUVWXYZ'; i int;
+declare
+  uid uuid := auth.uid();
+  new_code text;
+  exists_row boolean;
+  alphabet text := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  i int;
 begin
   if not public.bump_rate_limit('room:' || coalesce(uid::text, coalesce(p->>'player_key','anon')), 6, interval '1 hour') then
     raise exception 'rate_limited';
   end if;
   loop
-    code := '';
+    new_code := '';
     for i in 1..6 loop
-      code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
+      new_code := new_code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
     end loop;
-    exit when not exists (select 1 from public.rooms where code = code);
+    select true into exists_row from public.rooms rr where rr.code = new_code;
+    exit when not coalesce(exists_row, false);
   end loop;
   insert into public.rooms (code, host_name, exercise_kind, language, duration_sec, stream_seed)
-  values (code, left(coalesce(p->>'host_name','host'), 24),
+  values (new_code, left(coalesce(p->>'host_name','host'), 24),
           coalesce(p->>'exercise_kind','sprint'),
           coalesce(p->>'language','en'),
           greatest(15, least(300, coalesce((p>>>'duration_sec')::int, 30))),
           md5(random()::text || clock_timestamp()::text));
-  return code;
+  return new_code;
 end; $$;
 grant execute on function public.create_room(jsonb) to anon, authenticated;
 
