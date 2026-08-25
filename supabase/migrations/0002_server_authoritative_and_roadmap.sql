@@ -90,14 +90,14 @@ begin
 
   v_mode   := p->>'mode';
   v_lang   := p->>'language';
-  v_dur    := (p>>>'duration_sec')::int;
-  v_elapsed:= (p>>>'elapsed_ms')::int;
-  v_typed  := coalesce((p>>>'typed_chars')::int, 0);
-  v_correct:= coalesce((p>>>'correct_chars')::int, 0);
-  v_uncorr := coalesce((p>>>'uncorrected_errors')::int, 0);
-  v_focus  := coalesce((p>>>'focus_lost_count')::int, 0);
-  v_paste  := coalesce((p>>>'paste_flag')::boolean, false);
-  v_burst  := coalesce((p>>>'burst_flag')::boolean, false);
+  v_dur    := (p->>'duration_sec')::int;
+  v_elapsed:= (p->>'elapsed_ms')::int;
+  v_typed  := coalesce((p->>'typed_chars')::int, 0);
+  v_correct:= coalesce((p->>'correct_chars')::int, 0);
+  v_uncorr := coalesce((p->>'uncorrected_errors')::int, 0);
+  v_focus  := coalesce((p->>'focus_lost_count')::int, 0);
+  v_paste  := coalesce((p->>'paste_flag')::boolean, false);
+  v_burst  := coalesce((p->>'burst_flag')::boolean, false);
   v_challenge_version := p->>'challenge_version';
 
   if v_mode not in ('sprint','copy-pro','dictation','transcription','numbers','punctuation','daily','career','custom-practice')
@@ -119,11 +119,11 @@ begin
   end if;
 
   -- Material mismatch vs client claim (>10% relative on either metric) flags.
-  if p ? 'claimed_wpm' and (p>>>'claimed_wpm')::numeric > 0 and v_wpm > 0
-     and abs((p>>>'claimed_wpm')::numeric - v_wpm) / v_wpm > 0.10 then
+  if p ? 'claimed_wpm' and (p->>'claimed_wpm')::numeric > 0 and v_wpm > 0
+     and abs((p->>'claimed_wpm')::numeric - v_wpm) / v_wpm > 0.10 then
     v_reasons := v_reasons || array['wpm_mismatch'];
   end if;
-  if p ? 'claimed_accuracy' and abs((p>>>'claimed_accuracy')::numeric - v_acc) > 10 then
+  if p ? 'claimed_accuracy' and abs((p->>'claimed_accuracy')::numeric - v_acc) > 10 then
     v_reasons := v_reasons || array['accuracy_mismatch'];
   end if;
 
@@ -422,7 +422,7 @@ begin
   values (new_code, left(coalesce(p->>'host_name','host'), 24),
           coalesce(p->>'exercise_kind','sprint'),
           coalesce(p->>'language','en'),
-          greatest(15, least(300, coalesce((p>>>'duration_sec')::int, 30))),
+          greatest(15, least(300, coalesce((p->>'duration_sec')::int, 30))),
           md5(random()::text || clock_timestamp()::text));
   return new_code;
 end; $$;
@@ -450,12 +450,12 @@ begin
   if not public.bump_rate_limit('finishroom:' || coalesce(auth.uid()::text, p_player_key), 20, interval '1 hour') then
     raise exception 'rate_limited';
   end if;
-  if (p>>>'claimed_wpm')::numeric > 220 or (p>>>'claimed_accuracy')::numeric > 100 then
+  if (p->>'claimed_wpm')::numeric > 220 or (p->>'claimed_accuracy')::numeric > 100 then
     raise exception 'implausible_result';
   end if;
   insert into public.room_results (room_code, player_key, display_name, wpm, accuracy)
   values (p_code, left(p_player_key, 40), left(coalesce(p->>'display_name','player'), 24),
-          round((p>>>'claimed_wpm')::numeric, 1), round((p>>>'claimed_accuracy')::numeric, 1))
+          round((p->>'claimed_wpm')::numeric, 1), round((p->>'claimed_accuracy')::numeric, 1))
   on conflict (room_code, player_key) do nothing;
 end; $$;
 grant execute on function public.finish_room(text, text, jsonb) to anon, authenticated;
