@@ -53,14 +53,15 @@ whitelisted (`v2`, `v3`).
 
 Rooms carry a sha256 host-token hash; start/rematch verify it, so only the
 creator controls the race. `finish_room` accepts evidence counts only,
-re-derives WPM/accuracy inside the running race window (+20s grace), rejects
+re-derives WPM/accuracy inside the validated race window (+20s grace), rejects
 implausible derived speeds (>220 wpm), enforces count invariants, and dedupes
 per player-key. Live progress broadcasts (~3/sec) carry counters/percentages
 only — display-only, never scoring input. Room state machine:
-`lobby → running → (results readable; room expires after 1 day)`; host-only
+`lobby → running → finished` (host-only cancel reaches `finished` early and
+blocks further finishes; rooms expire after 1 day); host-only
 `running|finished → lobby` rematch resets seed + results; invalid transitions
-(finish before start, start twice, finish after window) are rejected by the
-RPCs with distinct error codes.
+(finish before start, start twice, finish after window or cancellation) are
+rejected by the RPCs with distinct error codes.
 
 ## Threat classes mitigated
 
@@ -81,8 +82,9 @@ RPCs with distinct error codes.
   `round(0.6·accuracy + 0.4·min(wpm,100), 1)`; direct completion inserts are
   impossible.
 - Assessment result injection: invite lifecycle enforced
-  (invalid/not-open/revoked/expired); payload bounded to the defined module
-  count with plausible metrics.
+  (invalid/not-open/revoked/expired); payload must describe EXACTLY the
+  defined modules with matching kind + ref identities in the stored order,
+  with plausible metric bounds.
 - Room hijacking (host-token authority); friend-result spam (rate-limited RPC,
   challenge existence/expiry, name sanitization, value bounds).
 

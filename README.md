@@ -101,7 +101,8 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
 1. Create a free Supabase project.
 2. Apply migrations in order: `supabase/migrations/0001_init.sql`,
    `0002_server_authoritative_and_roadmap.sql`, `0003_fix_signup_trigger.sql`,
-   `0004_zero_deferred_closure.sql`, `0005_final_closure.sql`.
+   `0004_zero_deferred_closure.sql`, `0005_final_closure.sql`,
+   `0006_closure_iv.sql`.
 3. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 4. Enable Email (magic-link) auth; set Site URL to your origin.
 5. Schedule `select purge_expired();` daily (pg_cron).

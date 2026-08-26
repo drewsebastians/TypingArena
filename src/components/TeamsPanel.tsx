@@ -25,6 +25,7 @@ import {
 } from "@/lib/remote";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import { audioEvidence, typingEvidence } from "@/lib/sync";
+import type { SubmitAttemptPayload } from "@/lib/remote";
 import { sanitizeTitle } from "@/lib/sanitize";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
@@ -34,10 +35,12 @@ import TranscriptionEngine from "@/components/TranscriptionEngine";
 import { ENGLISH_CORPUS } from "@/lib/content/english";
 import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
 import { DICTATION_CLIPS, TRANSCRIPTION_CLIPS, findDictationClip } from "@/lib/content/dictation";
+import { CAREER_TRACKS, audioEfficiency, scoreModules, typingEfficiency, getTrack } from "@/lib/career";
+import type { CareerAssessmentResult, CareerModule, ModuleScore } from "@/lib/career";
 import type { CorpusItem, DictationResult, Language, TranscriptionResult, TypingResult } from "@/lib/types";
 
-/** Single-exercise kinds the runner can execute end-to-end. */
-const ASSIGNMENT_KINDS = ["sprint", "copy-pro", "numbers", "punctuation", "dictation", "transcription"] as const;
+/** Single-exercise kinds plus full career tracks — all executable end-to-end. */
+const ASSIGNMENT_KINDS = ["sprint", "copy-pro", "numbers", "punctuation", "dictation", "transcription", "career"] as const;
 type AssignmentKind = (typeof ASSIGNMENT_KINDS)[number];
 
 const TYPING_KINDS: ReadonlySet<string> = new Set(["sprint", "copy-pro", "numbers", "punctuation"]);
@@ -186,6 +189,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
   const [durationSec, setDurationSec] = useState(30);
   const [language, setLanguage] = useState<Language>("en");
   const [clipRef, setClipRef] = useState<string>(TRANSCRIPTION_CLIPS[0]?.id ?? "");
+  const [careerTrackId, setCareerTrackId] = useState<string>(CAREER_TRACKS[0]?.id ?? "data-entry");
   const [dueAt, setDueAt] = useState<string>("");
   const [runningId, setRunningId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -283,6 +287,13 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
           Assignment · {running.title}
         </p>
         <div className="mt-6">
+          {running.kind === "career" && (
+            <CareerAssignmentRunner
+              assignment={running}
+              onBack={() => setRunningId(null)}
+              onFinish={(payload) => void finishAssignment(running, payload)}
+            />
+          )}
           {TYPING_KINDS.has(running.kind) && (
             <TypingEngine
               pool={corpusFor(lang).filter((c) => c.mode === (running.kind === "punctuation" ? "punctuation" : running.kind))}
@@ -337,7 +348,13 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
               <option key={k} value={k}>{k}</option>
             ))}
           </select>
-          {TYPING_KINDS.has(kind) ? (
+          {kind === "career" ? (
+            <select value={careerTrackId} onChange={(e) => setCareerTrackId(e.target.value)} aria-label="career track" className="max-w-[16rem] rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
+              {CAREER_TRACKS.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          ) : TYPING_KINDS.has(kind) ? (
             <>
               <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} aria-label="assignment language" className="rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
                 <option value="en">English</option>
@@ -362,9 +379,11 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
           <button
             onClick={async () => {
               try {
-                const definition: AssignmentDefinition = TYPING_KINDS.has(kind)
-                  ? { ref: kind, language, durationSec, version: "v2" }
-                  : { ref: clipRef, language: (kind === "dictation" ? findDictationClip(clipRef)?.language : TRANSCRIPTION_CLIPS.find((c) => c.id === clipRef)?.language) ?? "en", durationSec: kind === "dictation" ? 60 : 120, version: "v2" };
+                const definition: AssignmentDefinition = kind === "career"
+                  ? { ref: careerTrackId, language: "en", durationSec: getTrack(careerTrackId)?.modules.reduce((s, m) => s + m.durationSec, 0) ?? 90, version: "v2" }
+                  : TYPING_KINDS.has(kind)
+                    ? { ref: kind, language, durationSec, version: "v2" }
+                    : { ref: clipRef, language: (kind === "dictation" ? findDictationClip(clipRef)?.language : TRANSCRIPTION_CLIPS.find((c) => c.id === clipRef)?.language) ?? "en", durationSec: kind === "dictation" ? 60 : 120, version: "v2" };
                 await createAssignment(teamId, {
                   title: sanitizeTitle(title),
                   kind,
@@ -454,6 +473,139 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border p-3">
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="text-2xl font-black">{value}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Career assignment runner — executes the FULL assigned track module-by-module
+// through the real engines, then submits the aggregated career attempt for
+// server-side binding (mode 'career', exercise 'career:{trackId}').
+// ---------------------------------------------------------------------------
+
+function careerCorpus(modeRef: string, language: Language, seedKey: string): CorpusItem {
+  const base = language === "en" ? ENGLISH_CORPUS : INDONESIAN_CORPUS;
+  const pool = base.filter((c) => c.mode === modeRef);
+  const arr = pool.length > 0 ? pool : base.filter((c) => c.mode === "sprint");
+  let h = 2166136261;
+  for (let i = 0; i < seedKey.length; i++) h = Math.imul(h ^ seedKey.charCodeAt(i), 16777619);
+  return arr[(h >>> 0) % arr.length];
+}
+
+function CareerAssignmentRunner({ assignment, onFinish, onBack }: {
+  assignment: AssignmentRecord;
+  onFinish: (payload: SubmitAttemptPayload) => void;
+  onBack: () => void;
+}) {
+  const trackId = String((assignment.payload as { ref?: string }).ref ?? "");
+  const track = getTrack(trackId);
+  const [idx, setIdx] = useState(0);
+  const [scores, setScores] = useState<ModuleScore[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+
+  if (!track) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+        <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">This assignment references an unknown career track.</p>
+      </div>
+    );
+  }
+
+  const record = (s: ModuleScore) => {
+    const all = [...scores, s];
+    if (all.length < track.modules.length) {
+      setScores(all);
+      setIdx((i) => i + 1);
+      return;
+    }
+    if (submitted) return;
+    setSubmitted(true);
+    // Identical transparent scoring to standalone Career Mode.
+    const result: CareerAssessmentResult = scoreModules(track, all);
+    const totalDur = track.modules.reduce((sum, m) => sum + m.durationSec, 0);
+    onFinish({
+      clientId: `career-${track.id}-${result.completedAt}`,
+      exerciseId: `career:${track.id}`,
+      exerciseVersion: "v3",
+      scoringVersion: "v2.0.0",
+      mode: "career",
+      language: "en",
+      durationSec: Math.max(30, totalDur),
+      elapsedMs: Math.max(30000, totalDur * 1000),
+      typedChars: Math.max(20, all.reduce((s, m) => s + Math.round((m.speedWpm * 5 * 30) / 60), 0)),
+      correctChars: Math.max(10, all.reduce((s, m) => s + Math.round(((m.speedWpm * 5 * 30) / 60) * (m.accuracy / 100)), 0)),
+      uncorrectedErrors: 0,
+      pasteFlag: false,
+      claimedWpm: Math.round(all.reduce((s, m) => s + m.speedWpm, 0) / Math.max(1, all.length)),
+      claimedAccuracy: Math.round(all.reduce((s, m) => s + m.accuracy, 0) / Math.max(1, all.length)),
+      integrity: all.some((m) => m.integrityFlags.length > 0) ? "flagged" : "ranked",
+      metrics: { kind: "career", assessment: result as unknown as Record<string, unknown> },
+    });
+  };
+
+  const mod: CareerModule | undefined = track.modules[idx];
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6">
+      <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+      <p className="text-center text-xs uppercase tracking-widest text-zinc-500">
+        {assignment.title} · {track.name} · module {Math.min(idx + 1, track.modules.length)}/{track.modules.length}
+      </p>
+      <div className="mt-6">
+        {mod?.kind === "typing" && (
+          <TypingEngine
+            key={`${track.id}-${idx}`}
+            pool={[careerCorpus(mod.ref, mod.language, `${track.id}-${idx}`)]}
+            language={mod.language}
+            mode="copy-pro"
+            durationSec={mod.durationSec}
+            exerciseId={`career-${track.id}-${idx}`}
+            onComplete={(r: TypingResult) =>
+              record({
+                label: mod.label,
+                kind: "typing",
+                accuracy: r.accuracy,
+                speedWpm: r.grossWpm,
+                efficiency: typingEfficiency(r.correctedErrors, r.typedChars),
+                integrityFlags: r.integrity === "ranked" ? [] : [r.integrity],
+              })
+            }
+          />
+        )}
+        {mod?.kind === "dictation" && (
+          <DictationEngine
+            key={mod.ref}
+            item={findDictationClip(mod.ref)!}
+            onComplete={(r: DictationResult) =>
+              record({
+                label: mod.label,
+                kind: "dictation",
+                accuracy: r.wordAccuracy,
+                speedWpm: r.effectiveWpm,
+                efficiency: audioEfficiency(r.playback.replayRatio),
+                integrityFlags: r.integrity === "ranked" ? [] : [r.integrity],
+              })
+            }
+          />
+        )}
+        {mod?.kind === "transcription" && (
+          <TranscriptionEngine
+            key={mod.ref}
+            item={TRANSCRIPTION_CLIPS.find((c) => c.id === mod.ref)!}
+            onComplete={(r: TranscriptionResult) =>
+              record({
+                label: mod.label,
+                kind: "transcription",
+                accuracy: r.wordAccuracy,
+                speedWpm: r.effectiveWpm,
+                efficiency: audioEfficiency(r.playback.replayRatio),
+                integrityFlags: r.integrity === "ranked" ? [] : [r.integrity],
+              })
+            }
+          />
+        )}
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">Practice/operational skills check — not a certification. Your completion score is derived from these real results.</p>
     </div>
   );
 }

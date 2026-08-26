@@ -455,14 +455,29 @@ try {
       ])), "invite_invalid_or_expired");
 
     // Valid candidate submission persists; duplicates collapse.
+    const validModules = [
+      { label: "Sprint", kind: "typing-sprint", ref: "sprint", wpm: 55, accuracy: 95 },
+      { label: "Trans", kind: "transcription", ref: "trans-en-002", wpm: 35, accuracy: 88 },
+    ];
     await asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
-      JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-1", results: { modules: [{ label: "Sprint", wpm: 55, accuracy: 95 }, { label: "Trans", wpm: 35, accuracy: 88 }] } }),
+      JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-1", results: { modules: validModules } }),
     ]));
     await asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
-      JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-1", results: { modules: [{ label: "Sprint", wpm: 99, accuracy: 99 }] } }),
+      JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-1", results: { modules: [{ label: "Sprint", kind: "typing-sprint", ref: "sprint", wpm: 99, accuracy: 99 }, { label: "Trans", kind: "transcription", ref: "trans-en-002", wpm: 40, accuracy: 90 }] } }),
     ]));
     const candRows = await client.query("select count(*) c from public.assessment_results where assessment_id=$1 and candidate_key='cand-1'", [assessmentId]);
     ok("candidate result stored once (idempotent duplicate)", Number(candRows.rows[0].c) === 1);
+
+    // Identity + order binding: swapped module order is REJECTED.
+    await expectError("swapped module order rejected", () =>
+      asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
+        JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-swapped", results: { modules: [validModules[1], validModules[0]] } }),
+      ])), "invalid_results");
+    // Invented module identity rejected.
+    await expectError("module identity substitution rejected", () =>
+      asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
+        JSON.stringify({ invite_code: inviteCode, candidate_key: "cand-forged", results: { modules: [validModules[0], { label: "Fake", kind: "dictation", ref: "dict-en-001", wpm: 50, accuracy: 90 }] } }),
+      ])), "invalid_results");
 
     await expectError("oversized module metrics rejected", () =>
       asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
@@ -773,6 +788,74 @@ try {
     ok("owner can remove members", kicked.rowCount === 1 || kicked.rows.length === 1);
     // Restore B's membership for any downstream readers.
     await asUser(userB, () => client.query("SELECT public.join_team('TESTCODE99')"));
+  }
+
+  // 18 — CAREER ASSIGNMENTS + ROOM CANCELLATION (closure pass IV)
+  {
+    // Career assignment: full track binds via canonical 'career:{trackId}'.
+    const careerAssignment = await asUser(userA, () =>
+      client.query(
+        "insert into public.assignments (team_id, title, kind, payload, created_by) values ($1,'Q3 career screen','career',$2::jsonb,$3) returning id",
+        [teamId, JSON.stringify({ ref: "data-entry", version: "v2" }), userA],
+      ),
+    );
+    const careerId = careerAssignment.rows[0].id;
+    const careerAttempt = validEvidence({
+      mode: "career",
+      exercise_id: "career:data-entry",
+      duration_sec: 90,
+      elapsed_ms: 90000,
+      typed_chars: 200,
+      correct_chars: 180,
+      claimed_wpm: 44,
+      claimed_accuracy: 90,
+    });
+    await asUser(userB, () => client.query("SELECT public.submit_attempt($1::jsonb)", [JSON.stringify(careerAttempt)]));
+    const careerDone = await asUser(userB, () =>
+      client.query("SELECT public.complete_assignment($1,$2) r", [careerId, careerAttempt.client_id]),
+    );
+    // Server derives wpm=26.7 (typed 200 over 90s), acc=90 → score formula.
+    ok("career assignment completes from real track attempt",
+      Number(careerDone.rows[0].r.score) === Math.round((90 * 0.6 + Math.min(26.7, 100) * 0.4) * 10) / 10,
+      JSON.stringify(careerDone.rows[0].r));
+
+    // Wrong track identity cannot satisfy the assignment.
+    const wrongTrack = validEvidence({
+      mode: "career",
+      exercise_id: "career:punctuation",
+      duration_sec: 60,
+      elapsed_ms: 60000,
+      typed_chars: 120,
+      correct_chars: 110,
+      claimed_wpm: 40,
+      claimed_accuracy: 91,
+    });
+    await asUser(userB, () => client.query("SELECT public.submit_attempt($1::jsonb)", [JSON.stringify(wrongTrack)]));
+    await expectError(
+      "wrong-track career attempt rejected",
+      () => asUser(userB, () => client.query("SELECT public.complete_assignment($1,$2)", [careerId, wrongTrack.client_id])),
+      "attempt_mismatch",
+    );
+
+    // Room cancellation: host-only, blocks further finishes.
+    const createdRoom = await asAnon(() => client.query("SELECT public.create_room($1::jsonb) r", [
+      JSON.stringify({ host_name: "HostIV", language: "en", duration_sec: 30 }),
+    ]));
+    const room = createdRoom.rows[0].r;
+    await asAnon(() => client.query("SELECT public.start_room($1,$2)", [room.code, room.host_token]));
+    await expectError("non-host cannot cancel a room", () =>
+      asAnon(() => client.query("SELECT public.close_room($1,'forged')", [room.code])), "not_host");
+    await asAnon(() => client.query("SELECT public.close_room($1,$2)", [room.code, room.host_token]));
+    const cancelledState = await client.query("select state, ends_at from public.rooms where code=$1", [room.code]);
+    ok("host cancellation marks room finished", cancelledState.rows[0].state === "finished" && cancelledState.rows[0].ends_at !== null);
+    await expectError("finish after cancellation rejected (race not running)", () =>
+      asAnon(() => client.query("SELECT public.finish_room($1,'p9',$2::jsonb)", [
+        room.code, JSON.stringify({ display_name: "p9", typed_chars: 100, correct_chars: 90, elapsed_ms: 20000 }),
+      ])), "race_not_running");
+    // Idempotent re-cancel is safe.
+    await asAnon(() => client.query("SELECT public.close_room($1,$2)", [room.code, room.host_token]));
+    ok("re-cancellation is idempotent",
+      (await client.query("select state from public.rooms where code=$1", [room.code])).rows[0].state === "finished");
   }
 } finally {
   await client.end().catch(() => undefined);

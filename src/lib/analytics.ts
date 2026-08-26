@@ -65,6 +65,7 @@ export type EventName =
   | "multiplayer_finished"
   | "multiplayer_result_rejected"
   | "multiplayer_rematch"
+  | "multiplayer_cancelled"
   | "team_created"
   | "team_joined"
   | "team_join_failed"

@@ -16,6 +16,7 @@ import TypingEngine from "@/components/TypingEngine";
 import { ENGLISH_SPRINT_POOL } from "@/lib/content/english";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
+  cancelRoom,
   createRoom,
   fetchRoom,
   fetchRoomResults,
@@ -199,6 +200,18 @@ export default function MultiplayerPanel() {
     }
   }, [room]);
 
+  const cancel = useCallback(async () => {
+    if (!room) return;
+    try {
+      await cancelRoom(room.code, hostTokenFor(room.code) ?? "");
+      track("multiplayer_cancelled", { code: room.code });
+      setPhase("menu");
+      setRoom(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Only the host can end the race");
+    }
+  }, [room]);
+
   const onComplete = useCallback(
     async (r: TypingResult) => {
       if (!room) return;
@@ -358,6 +371,14 @@ export default function MultiplayerPanel() {
           {isHost && (
             <button onClick={() => void rematch()} className="rounded-full bg-black px-5 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
               Rematch
+            </button>
+          )}
+          {isHost && (
+            <button
+              onClick={() => { if (window.confirm("End this race for everyone? No further results can be recorded.")) void cancel(); }}
+              className="rounded-full border border-red-300 px-5 py-2 text-sm text-red-700"
+            >
+              End race
             </button>
           )}
           <button onClick={() => { setPhase("menu"); setRoom(null); }} className="rounded-full border px-5 py-2 text-sm">Back</button>

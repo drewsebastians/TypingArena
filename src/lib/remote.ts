@@ -684,6 +684,16 @@ export async function restartRoom(code: string, hostToken: string): Promise<void
   }
 }
 
+/** Host-only cancellation: ends a stale/abandoned race so no further finishes
+ *  can be recorded. Idempotent once cancelled. */
+export async function cancelRoom(code: string, hostToken: string): Promise<void> {
+  const { error } = await getClient().rpc("close_room", { p_code: code.toUpperCase(), p_host_token: hostToken });
+  if (error) {
+    const msg = error.message.includes("not_host") ? "Only the host can end the race" : error.message;
+    throw new Error(msg);
+  }
+}
+
 /** Submit race evidence — the server recomputes wpm/accuracy from counts
  *  inside the validated race window and dedupes per player. */
 export async function finishRoom(
