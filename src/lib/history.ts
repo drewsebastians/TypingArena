@@ -8,6 +8,7 @@
 // miscounting legacy UTC-day data.
 
 import type { DictationResult, TranscriptionResult, TypingResult } from "./types";
+import type { CareerAssessmentResult } from "./career";
 import { arenaDateString, arenaDaysBetween } from "./datetime";
 import { track } from "./analytics";
 
@@ -15,6 +16,7 @@ const KEYS = {
   typing: "ta:typing_history_v2",
   dictation: "ta:dictation_history_v2",
   transcription: "ta:transcription_history_v2",
+  career: "ta:career_history",
   xp: "ta:xp",
   streak: "ta:streak_v2",
   lastActivityDay: "ta:last_activity_day",
@@ -85,12 +87,34 @@ export function saveTranscriptionResult(r: TranscriptionResult): void {
   noteActivity();
 }
 
+// ---------------------------------------------------------------------------
+// Career (account-backed history hydrates cross-device via attempts.metrics)
+// ---------------------------------------------------------------------------
+
+export function loadCareerHistory(): CareerAssessmentResult[] {
+  return readArray<CareerAssessmentResult>(KEYS.career);
+}
+
+/** Newest-first insert keyed by completedAt (the career result's identity). */
+export function saveCareerResult(r: CareerAssessmentResult): void {
+  const arr = loadCareerHistory().filter((x) => x.completedAt !== r.completedAt || x.trackId !== r.trackId);
+  arr.unshift(r);
+  writeArray(KEYS.career, arr);
+  noteActivity();
+}
+
 /** Every persisted result across modes (used for account migration + export). */
-export function exportAllResults(): { typing: TypingResult[]; dictation: DictationResult[]; transcription: TranscriptionResult[] } {
+export function exportAllResults(): {
+  typing: TypingResult[];
+  dictation: DictationResult[];
+  transcription: TranscriptionResult[];
+  career: CareerAssessmentResult[];
+} {
   return {
     typing: loadTypingHistory(),
     dictation: loadDictationHistory(),
     transcription: loadTranscriptionHistory(),
+    career: loadCareerHistory(),
   };
 }
 

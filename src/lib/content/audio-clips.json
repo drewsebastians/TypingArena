@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for static dictation/transcription audio. scripts/generate-audio.mjs synthesizes each clip OFFLINE during development via edge-tts; the website runtime only plays the generated files from /public/audio. No TTS API is called at runtime.",
+  "$comment": "Single source of truth for static dictation/transcription audio. scripts/generate-audio.mjs synthesizes each clip OFFLINE during development with Piper TTS (MIT engine + MIT voice models); the website runtime only plays the generated files from /public/audio. No TTS API is called at runtime.",
   "version": "v2",
   "license": {
     "source": "original narration authored for TypingArena; speech synthesized offline during development with Piper TTS (MIT engine, MIT voice models from rhasspy/piper-voices)",

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { buildSkillMatrix, nextExerciseRecommendation } from "@/lib/skillMatrix";
-import { getStreak, loadDictationHistory, loadTranscriptionHistory, loadTypingHistory } from "@/lib/history";
+import { getStreak, loadCareerHistory, loadDictationHistory, loadTranscriptionHistory, loadTypingHistory } from "@/lib/history";
+import { flushQueue, pendingSyncCount } from "@/lib/sync";
 import { track } from "@/lib/analytics";
 import AccountPanel from "@/components/AccountPanel";
 import PrivacyPanel from "@/components/PrivacyPanel";
@@ -13,18 +14,39 @@ export default function ProgressPage() {
   const [typing, setTyping] = useState(loadTypingHistory);
   const [dictation, setDictation] = useState(loadDictationHistory);
   const [transcription, setTranscription] = useState(loadTranscriptionHistory);
+  const [career, setCareer] = useState(loadCareerHistory);
   const [streak, setStreak] = useState(0);
+  const [pending, setPending] = useState(0);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [tab, setTab] = useState<"typing" | "dictation" | "transcription">("typing");
 
   useEffect(() => {
     track("history_viewed", { source: "progress" });
     setStreak(getStreak().current);
+    // Honest sync state: never claim success when persistence is pending.
+    setPending(pendingSyncCount());
+    const id = window.setInterval(() => setPending(pendingSyncCount()), 4000);
+    return () => window.clearInterval(id);
   }, []);
 
   const refresh = () => {
     setTyping(loadTypingHistory());
     setDictation(loadDictationHistory());
     setTranscription(loadTranscriptionHistory());
+    setCareer(loadCareerHistory());
+    setPending(pendingSyncCount());
+  };
+
+  const syncNow = async () => {
+    setSyncMsg(null);
+    try {
+      const r = await flushQueue();
+      setPending(r.remaining);
+      setSyncMsg(r.remaining === 0 ? "All results synced." : `${r.remaining} still waiting — will retry automatically.`);
+    } catch (e) {
+      setPending(pendingSyncCount());
+      setSyncMsg(e instanceof Error ? e.message : "Sync failed — results stay safe locally and retry later.");
+    }
   };
 
   const matrix = buildSkillMatrix(typing, dictation, transcription);
@@ -41,8 +63,24 @@ export default function ProgressPage() {
         <Stat label="Transcriptions" value={String(transcription.length)} />
         <Stat label="Streak" value={`${streak}d`} sub="Asia/Jakarta days" />
       </div>
+      {career.length > 0 && (
+        <p className="mt-2 text-xs text-zinc-500">
+          {career.length} career assessment{career.length === 1 ? "" : "s"} on record — see the <Link href="/career" className="underline">Career page</Link>.
+        </p>
+      )}
 
       <AccountPanel onChanged={refresh} />
+
+      {pending > 0 && (
+        <div role="status" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <span>{pending} result{pending === 1 ? "" : "s"} saved locally and waiting to sync.</span>
+          <button onClick={() => void syncNow()} className="rounded-full border px-3 py-1 font-semibold">Sync now</button>
+          {syncMsg && <span>{syncMsg}</span>}
+        </div>
+      )}
+      {pending === 0 && syncMsg && (
+        <p role="status" className="mt-2 text-xs text-emerald-700">{syncMsg}</p>
+      )}
 
       <div className="mt-6 rounded-xl bg-black p-4 text-white dark:bg-white dark:text-black">
         <div className="text-xs uppercase tracking-widest opacity-60">Recommended next</div>

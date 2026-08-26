@@ -165,7 +165,9 @@ function AcceptChallenge({ challengeId }: { challengeId: string }) {
       .then((r) => {
         setRecord(r);
         setState("ready");
-        return fetchFriendResults(challengeId).then(setResults).catch(() => undefined);
+        return fetchFriendResults(challengeId).then(setResults).catch((e: unknown) => {
+          setError(e instanceof Error ? `Could not load current results: ${e.message}` : "Could not load current results");
+        });
       })
       .catch((e: unknown) => {
         setState("error");
@@ -181,6 +183,9 @@ function AcceptChallenge({ challengeId }: { challengeId: string }) {
           displayName: getUsername() ?? "guest",
           wpm: r.grossWpm,
           accuracy: r.accuracy,
+          typedChars: r.typedChars,
+          correctChars: r.correctChars,
+          elapsedMs: r.elapsedMs,
         });
         const updated = await fetchFriendResults(challengeId);
         setResults(updated);

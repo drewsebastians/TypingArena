@@ -35,10 +35,13 @@ function newId(): string {
 export default function DictationEngine({
   item,
   noiseLevel,
+  exerciseId,
   onComplete,
 }: {
   item: DictationItem;
   noiseLevel?: string;
+  /** Overrides the clip id in the persisted result (e.g. assignment binding). */
+  exerciseId?: string;
   onComplete?: (r: DictationResult) => void;
 }) {
   const [typed, setTyped] = useState("");
@@ -152,7 +155,7 @@ export default function DictationEngine({
       pasteDetected: pasteFlag,
       integrity,
       integrityReasons: reasons,
-      exerciseId: item.id,
+      exerciseId: exerciseId ?? item.id,
       exerciseVersion: "v2",
       scoringVersion: SCORING_VERSION,
       normalizationVersion: "v2.0.0",

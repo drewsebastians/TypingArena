@@ -29,9 +29,12 @@ function newId(): string {
 
 export default function TranscriptionEngine({
   item,
+  exerciseId,
   onComplete,
 }: {
   item: TranscriptionItem;
+  /** Overrides the clip id in the persisted result (e.g. assignment binding). */
+  exerciseId?: string;
   onComplete?: (r: TranscriptionResult) => void;
 }) {
   const [typed, setTyped] = useState("");
@@ -157,7 +160,7 @@ export default function TranscriptionEngine({
       pasteDetected: pasteFlag,
       integrity,
       integrityReasons: reasons,
-      exerciseId: item.id,
+      exerciseId: exerciseId ?? item.id,
       exerciseVersion: "v2",
       scoringVersion: SCORING_VERSION,
       normalizationVersion: "v2.0.0",

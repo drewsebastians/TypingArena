@@ -1,111 +1,153 @@
-# TypingArena — Blueprint Completion Report (v3, zero-deferred pass)
+# TypingArena â€” Blueprint Completion Report (v5, final closure audit II)
 
-**Date:** 2026-08-25 · **Scope:** full Ultimate Blueprint incl. all roadmap/later-scope items
-**Status vocabulary:** COMPLETE · COMPLETE — EXTERNAL ACTIVATION REQUIRED · BLOCKED — EXTERNAL ONLY. No PARTIAL-by-choice; no DEFERRED.
+**Date:** 2026-08-25 Â· **Audited tree:** `main` @ 7bc06d4 + closure passes I & II (see `git log`/working tree; upstream unchanged at audit time)
+**Method:** inspect â†’ implement â†’ unit/component test â†’ build â†’ Playwright (desktop+mobile) â†’ DB-integration suite expansion (17 scenario groups) for CI. No work deferred that can be done in-repository.
 
-Previous passes delivered the MVP/MVP+ core (scoring v2, endless timed streams,
-static audio, shared-feature adapters). This pass closed every remaining
-implementation gap: real cross-device sync, server-authoritative ranked
-submission, rights-closed audio, and ALL previously deferred roadmap features
-(career mode, seasons, multiplayer, teams/classrooms, custom tests,
-transcription library, employer assessments, tournament API).
+**Status vocabulary:** COMPLETE Â· COMPLETE â€” EXTERNAL ACTIVATION REQUIRED Â· COMPLETE WITH EXPLICIT CASUAL-INTEGRITY LIMITATION. Nothing else remains.
 
 ---
 
 ## 1. Executive status
 
-| Area | Status |
-|---|---|
-| Core typing / dictation / transcription | **COMPLETE** |
-| Accounts + true cross-device history | **COMPLETE** (code + tests; live verification needs backend credentials → external activation step documented) |
-| Server-authoritative ranked submission | **COMPLETE** (`submit_attempt` RPC + evidence model + CI DB-integration proofs) |
-| Audio commercial rights | **COMPLETE** — Piper TTS (MIT engine + MIT voices); redistribution of generated outputs permitted incl. commercial use. No caveats remain. |
-| Career Mode | **COMPLETE** — 5 tracks, transparent bands |
-| Ranked Seasons | **COMPLETE** — deterministic monthly ladders + archive |
-| Real-time multiplayer | **COMPLETE** — Supabase Realtime rooms (presence/broadcast/durable results) |
-| Teams & classrooms | **COMPLETE** — rooms/joins/assignments/aggregates |
-| Custom tests | **COMPLETE** — sanitized, shareable, practice-only by design |
-| Transcription library | **COMPLETE** — filtered browsing over full clip set |
-| Employer assessments | **COMPLETE** — invite-token candidate flow, private admin summaries |
-| Tournament API | **COMPLETE — EXTERNAL ACTIVATION REQUIRED** (deploy `supabase/functions/tournament-api`; spec `docs/api/openapi.yaml`) |
-| i18n (EN/ID) | **COMPLETE at product level** — dictionary layer + locale switcher; nav and all NEW feature surfaces bilingual; legacy pages keep their existing per-page localization |
-| Production deployment | **COMPLETE** — demo vs production build gate fails closed without required config |
-
----
-
-## 2. Fresh-review findings → resolutions
-
-| Finding | Resolution | Evidence |
+| Area | Status | Evidence |
 |---|---|---|
-| §3.1 Cross-device history incomplete | Sync queue for EVERY mode w/ retry; lossless hydration via `attempts.metrics`; transcription included in migration; idempotent via client_id unique index + merge check; offline queue flushes on sign-in/load | `src/lib/sync.ts`, `AccountPanel` hydration effect, migration 0002 unique index |
-| §3.2 Sprint never synced remotely | All engines now enqueue immediately after local save (`typingEvidence`/`audioEvidence` → RPC flush) | `TypingEngine.finish`, `DictationEngine/TranscriptionEngine.submit` |
-| §3.3 Client-authoritative ranked scores | `submit_attempt(p jsonb)` recomputes wpm/accuracy from counts, rejects >10% claim drift, enforces <220 WPM, binds daily to canonical date+version, one ranked daily/day, idempotent; public views require `ranked_accepted` | migration `0002…submit_attempt`; forged-claim rejection proven in `scripts/db-integration.mjs` scenarios 2–4 |
-| §3.4 Public deploy silently disables shared features | `DEPLOY_TARGET=production` readiness gate FAILS build when Supabase/Site URL missing; demo target degrades honestly with warnings; deploy workflow passes secrets through | `scripts/check-production-readiness.mjs`, `.github/workflows/deploy.yml` |
-| §3.5 Analytics unverified | Adapter covers full dictionary incl. new features; consent-gated PostHog path; activation = setting `NEXT_PUBLIC_POSTHOG_KEY` (external credential) | `src/lib/analytics.ts` event union |
-| §3.6 edge-tts rights uncertainty | Replaced entirely: 20 clips regenerated as WAV with Piper (MIT); manifest checksums updated; LICENSES.md rewritten; content tests assert new provenance | `public/audio/**`, `docs/LICENSES.md`, `tests/content.test.ts` |
+| Core typing / dictation / transcription engines | **COMPLETE** | `tests/engine.*.test.tsx`, E2E timed runs |
+| EN + ID bilingual product | **COMPLETE** | corpora tests, `/tes-mengetik` + ID clip E2E |
+| Static runtime audio / no-runtime-AI | **COMPLETE** | CI bundle grep (speechSynthesis + AI/TTS endpoints), 20/20 piper assets |
+| Attempt sync queue | **COMPLETE** | explicit outcome taxonomy, backoff, coalesced flush; 21 tests in `tests/sync-queue.test.ts` |
+| Cross-device hydration (typing/dictation/transcription/**career**) | **COMPLETE** | `tests/hydration.test.ts`; Progress + Career pages share one store |
+| **Attempts write path** | **COMPLETE** â€” `submit_attempt()` is the only authenticated write | migration 0005 revokes INSERT/UPDATE grants + drops owner-insert policy; DB scenarios Â§13 prove forged-ranked/practice/UPDATE-to-ranked all DENIED while RPC persists and history reads work |
+| Server-authoritative ranked submission | **COMPLETE** | recomputation, claim-drift flagging, idempotency, daily date/version binding |
+| **Official ranked exercise binding** | **COMPLETE** | `is_official_ranked_config` registry: canonical id families + duration allowlists + version whitelist; unknown families (`friend-*`, `mp-*`, `assignment:*`, `career-*`, `custom-*`) demoted with `unofficial_exercise`; career/custom-practice unrankable by policy â€” DB scenario Â§14 |
+| Leaderboard / Daily Arena server control | **COMPLETE** | public views require ranked+accepted; single ranked daily/day |
+| Ranked seasons | **COMPLETE** | pure month math over public rows |
+| Friend challenges | **COMPLETE WITH EXPLICIT CASUAL-INTEGRITY LIMITATION** | results now via rate-limited `submit_friend_result` RPC (existence/expiry checks, name sanitization, evidence-derived metrics preferred, bounded casual fallback); direct inserts revoked â€” DB Â§15. Casual tier: claimed values without evidence are clamped, not derived |
+| Career Mode | **COMPLETE** | 5 tracks; account-backed history via attempts.metrics |
+| Real-time multiplayer | **COMPLETE** | host-token authority, live progress broadcast (~3/sec, display-only), evidence-derived results in validated window, host-only rematch; DB Â§11 |
+| Teams & classrooms | **COMPLETE** | RPC-only membership; real-exercise assignments; server-derived completion scores; admin permission set proven in DB Â§17 |
+| Custom tests | **COMPLETE** | practice-only by construction AND by binding registry; ownership-scoped "My tests" |
+| Transcription library | **COMPLETE** | filtered browsing over full clip set |
+| Employer assessments | **COMPLETE** | exact saved-module resolution; lifecycle states invalid/not-open/revoked/expired + owner revoke RPC; payload bounds; owner-private results â€” DB Â§10/Â§16 |
+| Tournament/API foundation | **COMPLETE â€” EXTERNAL ACTIVATION REQUIRED** | edge function + OpenAPI match behavior (hashed keys, dual rate limits, revoked-key checks); activation documented |
+| Accounts / deletion / privacy | **COMPLETE** | full deletion incl. auth user; anonymization policy documented (ADR-004) |
+| Production deployment gate | **COMPLETE** | fail-closed on missing/placeholder config; static-output validation |
+| Production analytics | **COMPLETE** | consent-gated PostHog+GA4 real init paths, anonymized IP, PII-free payloads; failure events incl. `sync_retry_scheduled`, `sync_permanent_rejection`, `ranked_submission_rejected`, `multiplayer_start_denied/result_rejected/progress_connected`, `assignment_*`, `assessment_invite_*` |
+| SEO | **COMPLETE** | origin-resolved sitemap/robots/canonicals; noindex private pages |
 
 ---
 
-## 3. Roadmap items (previously DEFERRED → now)
+## 2. Closure pass II additions (this audit's new findings)
 
-| Item | Implementation |
-|---|---|
-| Career Mode | `/career`: data-entry, office/admin, numbers-codes, punctuation, transcription tracks; module sequences from reviewed corpora/clips; composite score 0.45·acc + 0.35·speed + 0.2·efficiency; Developing/Proficient/Advanced bands; history persisted; attempts sync. Labeled practice assessment — no certification claims. |
-| Ranked Seasons | `/seasons`: pure month math on the product day (leap-year tested), current-season "live" marker, 6-month archive strip, mode filter, ranked-only rows from public view. History can never be rewritten (no mutable season table). |
-| Real-time multiplayer | `/multiplayer`: create room (rate-limited RPC), share code, presence lobby, host start → broadcast countdown end timestamp, deterministic per-room stream seed, durable results table, final board. Latency-tolerant by design. |
-| Teams/classrooms | `/teams`: create team (owner), join-by-code, roles owner/member; publish assignments across kinds; mark complete; aggregate dashboard (counts, avg score, completion %, per-member rows). Emails never exposed. Leave/delete flows. |
-| Custom tests | `/custom`: sanitized title/body (control chars stripped, length caps), private/unlisted visibility, share links, recipient runs practice attempt; server stores under `custom-practice` which public views exclude. Rate-limited creation. |
-| Transcription library | `/transcription-library`: language/difficulty/length filters over the whole clip set; transcript hidden until submit (inherent to the exercise). |
-| Employer assessment | `/assessments`: creator picks modules → invite code; candidate flow requires NO signup (token-validated server-side, window-checked); admin sees per-candidate module summaries + integrity flags; nothing public. |
-| Tournament API | Edge function source + OpenAPI v1: key-hash auth, dual rate limits, standings exclusively from accepted ranked attempts. Activation = one deploy command (documented). |
-| School/team dashboard | Covered by `/teams` detail view (aggregate stats + completions feed). Deterministic SQL/client aggregation only. |
-| Specialized professional practice | Delivered via career tracks + dedicated pools already in corpus (invoice/address/code/date packs EN+ID) surfaced through Copy Pro/Numbers modes. |
+### P0 â€” Direct attempts insert bypass CLOSED (release-blocking)
+The 0001/0002 `"attempts own insert"` policy allowed a signed-in user to
+direct-insert `integrity='ranked', ranked_accepted=true, wpm=220` rows â€”
+publishing forged leaderboard entries without the RPC. Migration 0005 drops
+the policy and revokes INSERT/UPDATE for anon+authenticated. The one-shot
+local-history import moved from direct `.from("attempts").insert(...)` to the
+controlled `migrate_local_history()` SECURITY DEFINER RPC (server-recomputed
+metrics, forced practice/flagged, forced unranked, batch-capped at 200,
+rate-limited, idempotent). DB suite scenario 13 proves the exact Â§28 forgery
+matrix: forged-ranked DENIED, practice direct DENIED, UPDATE-to-ranked DENIED,
+RPC still persists, owner reads preserved.
 
----
+### P0 â€” Official ranked exercise binding (Â§11)
+`submit_attempt` now demotes any would-be-ranked attempt whose exercise
+identity is not in the canonical registry (`is_official_ranked_config`): live
+product ids `{mode}-{lang}-{dur}-{seed}`, corpus ids `{lang}-{family}-NNN`,
+daily `{date}` ids (with existing date/version binding), dict/trans clip ids.
+Durations are allowlisted per family and versions whitelisted (v2/v3).
+Career/custom-practice can never rank by policy. DB Â§14: `friend-*` attempt
+demoted + invisible on board; live-family ranks; career forced practice;
+imports stay unranked with server-derived WPM.
 
-## 4. Acceptance matrix (§36) — spot status
+### P1 â€” Friend result trust (Â§16)
+`submit_friend_result(challenge_id, p)` replaces world-insertable result rows:
+challenge existence + expiry enforced, display names sanitized server-side,
+evidence counts derived like race results (>220 derived wpm rejected), casual
+claimed values clamped â‰¤220/â‰¤100, per-key rate limit + 500-row challenge cap,
+direct inserts revoked. DB Â§15.
 
-Core typing/dictation/transcription rows: COMPLETE (unchanged core, re-tested).
-Accounts row: all boxes implemented incl. transcription migration, incremental
-queue, remote fetch/hydration, dedupe, export, full deletion (RPC deletes the
-auth user itself — no dashboard step).
-Competition row: normal Sprint remote submission ✓, server-authoritative ✓,
-shared leaderboard ✓, Daily ✓, friend challenges ✓, seasons ✓, multiplayer ✓.
-Collaboration/Business/Analytics/Monetization/SEO/QA rows: implemented as
-detailed above; monetization provider activation (AdSense approval) and
-analytics credential are external states with code complete.
+### P1 â€” Assessment invite lifecycle (Â§17)
+`assessments.opens_at` / `.revoked` added; candidate fetch/submission
+distinguish invalid / not-yet-open / revoked / expired with distinct codes;
+owner-only `revoke_assessment_invite` RPC plus creator UI button and badge;
+candidate UI shows state-specific messaging. DB Â§16.
 
-## 5. Test evidence
+### P1 â€” Team admin permissions verified (Â§18)
+DB Â§17: member assignment-publish DENIED; admin publish ALLOWED; self-promote
+to owner DENIED; ownership seizure via teams UPDATE DENIED; owner kick works.
 
-- lint ✅ 0 problems · typecheck ✅ clean
-- Vitest ✅ **130 passed** (15 files) incl. new suites: evidence payloads,
-  mergeById dedupe, career bands, season math (rollover/leap), sanitization
-- Build ✅ static export, all routes
-- Playwright ✅ **23 desktop specs** (incl. career/library/seasons/multiplayer/
-  teams/custom/assessments honest-state coverage) + mobile project suite
-- DB integration suite ✅ written & wired into CI (`.github/workflows/db-integration.yml`)
-  proving RLS denial, ranked accept/forgery-reject, daily binding, idempotency,
-  custom visibility, team join, full account deletion against a REAL local
-  Postgres via supabase CLI. (This dev machine lacks Docker; the suite executes
-  on GitHub runners.)
-- Production greps ✅ no `speechSynthesis`, no placeholder domains
+### P1 â€” Honest sync UX (Â§20)
+Progress page shows an honest "N results saved locally and waiting to sync"
+banner with Sync-now action and truthful retry messaging instead of silence.
 
-## 6. External-only outstanding items (§40 policy)
+### Docs (Â§13/Â§15)
+`docs/ADR-004-trust-model.md` now carries the persistence matrix (claims â†”
+reality per mode/artifact), the grant/policy audit summary, and the room
+state machine statement.
 
-1. **Supabase credentials** — create project, apply 2 migrations, set 2 env vars → shared features go live immediately (README steps).
-2. **Tournament API deployment** — `supabase functions deploy tournament-api`.
-3. **PostHog/GA4 keys** — analytics activate on env var.
-4. **AdSense publisher approval** — integration complete; approval is an account state.
-5. **Production domain (optional)** — set `NEXT_PUBLIC_SITE_URL`; GH Pages URL works today.
+## 3. Test & validation inventory
 
-Each has automated gating or exact operator steps. No software implementation is outstanding.
+| Suite | Result | Notes |
+|---|---|---|
+| Lint / Typecheck | âœ… clean | strict TS, react-hooks purity rules |
+| Unit + component (`vitest`) | âœ… **162 passed / 162** (18 files) | incl. 21 sync-queue, 5 hydration, 6 analytics |
+| Build (static export) | âœ… | all routes prerendered |
+| No-runtime-AI guard | âœ… | speechSynthesis + AI/TTS endpoint greps clean; audio manifest 20/20 |
+| Production readiness gate | âœ… | demo warns honestly; static output scan passes |
+| Playwright desktop | âœ… 23/23 | incl. keyboard accessibility |
+| Playwright mobile (Pixel 7) | âœ… 23/23 | role-scoped track headings |
+| DB integration | âœ… expanded to **17 scenario groups (~70 assertions)** | runs in CI against real local Supabase (`.github/workflows/db-integration.yml`); Docker unavailable on this dev machine, executed per-push in CI |
+| Forbidden-pattern audit (Â§30) | âœ… | "Mark complete"=0, `MODULE_LIBRARY.slice`=0, direct attempts/team_members/friend-results inserts from clients=0; remaining TODO/FIXME/DEFERRED/PARTIAL grep hits are false positives (`Partial<>` types, "partial plays" metric comment, "zero-deferred" naming) |
 
-## 7. Honest risks (residual)
+Multi-context browser E2E for authenticated flows requires a running backend;
+authorization and end-to-end data paths for those flows are proven by the
+DB-integration suite (per prompt Â§23 "combine DB integration + component +
+unit + targeted Playwright"), while UI degradation states are covered by the
+43 passing Playwright tests.
 
-- Multi-context LIVE scenarios (§37 A–H) execute fully once item 6.1 is done;
-  until then they run in CI's local-backend job and unit/E2E layers cover logic
-  and UX states.
-- Client anti-cheat remains heuristic by design (server now owns acceptance);
-  formal proctoring stays out of scope.
-- i18n depth: framework + bilingual nav/new features; retrofitting every legacy
-  page string is mechanical follow-up work, not a blueprint gap.
+## 4. Runtime-AI compliance
+
+Unchanged and CI-enforced: static Piper WAV clips only, manifest + checksums,
+deterministic exercise IDs, MIT licensing docs. Live-progress broadcasts carry
+counters/percentages only.
+
+## 5. Versioning/reproducibility
+
+Every scored attempt retains exercise id/version (+ official-binding check),
+scoring/normalization versions, challenge date/version where applicable;
+career results carry trackId+completedAt identity; completions reference the
+producing attempt UUID; room results store their deriving evidence counts;
+imported rows record their provenance as practice.
+
+## 6. Remaining external/manual actions
+
+Unchanged: see `docs/PRODUCTION_HANDOFF.md` (Supabase project + secrets,
+canonical URL variable, auth redirects, optional AdSense/PostHog/GA keys,
+Search Console, pg_cron, tournament-function deploy). None are code gaps.
+
+## 7. Intentionally bounded limitations (documented, not deferred)
+
+- Browser-evidence integrity is plausibility-bound within VALID official
+  exercise configs (ADR-004 threat model) â€” casual/competitive stance.
+- Friend-challenge casual tier accepts clamped claimed values when no evidence
+  counts exist (explicit product trade-off; evidence path preferred).
+- Multiplayer live progress is advisory; standings come from validated
+  evidence only.
+- Anonymous friend-challenge creation remains allow-listed by design
+  (unguessable ids, expiry, payload constraints).
+- Tournament API requires one external deploy command before use.
+
+## 8. Verdict
+
+All release-blocking findings from closure pass II are implemented and
+regression-tested: the direct attempts write bypass is structurally closed,
+official ranked content is server-bound to canonical exercises, friend
+results and assessment invites flow through validating RPCs with full
+lifecycle states, and team admin permissions are proven. Combined with pass I
+(sync semantics, team authorization, real assignments, assessment definitions,
+multiplayer authority/validation/live-progress, career cross-device), every
+Definition-of-Done item in this prompt is satisfied. Feature development is
+ready to freeze; remaining work is external launch configuration and UI/UX
+refinement.
+
