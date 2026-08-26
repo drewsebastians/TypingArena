@@ -616,16 +616,17 @@ try {
     );
     const anyAttempt = await client.query("select id, integrity, ranked_accepted from public.attempts where user_id=$1 limit 1", [userB]);
     if (anyAttempt.rows.length > 0) {
-      // No UPDATE policy exists → RLS makes the row silently unmodifiable.
-      const upd = await asUser(userB, () =>
-        client.query("update public.attempts set integrity='ranked', ranked_accepted=true where id=$1", [anyAttempt.rows[0].id]),
+      // UPDATE is revoked at the GRANT layer (authoritative columns are
+      // RPC-only), so the mutation is denied outright.
+      await expectError(
+        "owner cannot UPDATE attempt into ranked state",
+        () => asUser(userB, () =>
+          client.query("update public.attempts set integrity='ranked', ranked_accepted=true where id=$1", [anyAttempt.rows[0].id]),
+        ),
       );
       const after = await client.query("select integrity, ranked_accepted from public.attempts where id=$1", [anyAttempt.rows[0].id]);
-      ok("owner cannot UPDATE attempt into ranked state",
-        Number(upd.rowCount) === 0
-        && after.rows[0].integrity !== "ranked"
-        && after.rows[0].ranked_accepted === false,
-        JSON.stringify({ rowCount: upd.rowCount, row: after.rows[0] }));
+      ok("attempt row unchanged after denied mutation",
+        after.rows[0].integrity !== "ranked" && after.rows[0].ranked_accepted === false);
     }
     // Owner history read still works.
     const mine = await asUser(userB, () =>
@@ -768,19 +769,20 @@ try {
       ),
     );
     ok("admin can publish assignments", Boolean(adminPub.rows[0].id));
-    // Self-promotion / ownership seizure blocked (no UPDATE policy → 0 rows).
-    const promote = await asUser(userB, () =>
-      client.query("update public.team_members set role='owner' where team_id=$1 and user_id=$2", [teamId, userB]),
+    // Self-promotion / ownership seizure blocked: UPDATE on team_members is
+    // revoked outright; teams UPDATE exists only for the owner policy.
+    await expectError("admin cannot self-promote to owner via team_members UPDATE", () =>
+      asUser(userB, () =>
+        client.query("update public.team_members set role='owner' where team_id=$1 and user_id=$2", [teamId, userB]),
+      ),
     );
     const roleAfter = await client.query("select role from public.team_members where team_id=$1 and user_id=$2", [teamId, userB]);
-    ok("admin cannot self-promote to owner via team_members UPDATE",
-      Number(promote.rowCount) === 0 && roleAfter.rows[0].role === "admin");
-    const seize = await asUser(userB, () =>
-      client.query("update public.teams set owner_id=$1 where id=$2", [userB, teamId]),
+    ok("role remains admin after denied promotion", roleAfter.rows[0].role === "admin");
+    await expectError("admin cannot seize team ownership via teams UPDATE", () =>
+      asUser(userB, () => client.query("update public.teams set owner_id=$1 where id=$2", [userB, teamId])),
     );
     const ownerAfter = await client.query("select owner_id from public.teams where id=$1", [teamId]);
-    ok("admin cannot seize team ownership via teams UPDATE",
-      Number(seize.rowCount) === 0 && String(ownerAfter.rows[0].owner_id) === String(userA));
+    ok("ownership unchanged after denied seizure", String(ownerAfter.rows[0].owner_id) === String(userA));
     // Owner can remove a member/admin directly (kick power preserved).
     const kicked = await asUser(userA, () =>
       client.query("delete from public.team_members where team_id=$1 and user_id=$2 returning user_id", [teamId, userB]),
