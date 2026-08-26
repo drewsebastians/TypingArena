@@ -621,17 +621,20 @@ try {
     );
     const anyAttempt = await client.query("select id, integrity, ranked_accepted from public.attempts where user_id=$1 limit 1", [userB]);
     if (anyAttempt.rows.length > 0) {
+      const before = anyAttempt.rows[0];
       // UPDATE is revoked at the GRANT layer (authoritative columns are
       // RPC-only), so the mutation is denied outright.
       await expectError(
         "owner cannot UPDATE attempt into ranked state",
         () => asUser(userB, () =>
-          client.query("update public.attempts set integrity='ranked', ranked_accepted=true where id=$1", [anyAttempt.rows[0].id]),
+          client.query("update public.attempts set integrity='ranked', ranked_accepted=true where id=$1", [before.id]),
         ),
       );
-      const after = await client.query("select integrity, ranked_accepted from public.attempts where id=$1", [anyAttempt.rows[0].id]);
+      const after = await client.query("select integrity, ranked_accepted from public.attempts where id=$1", [before.id]);
       ok("attempt row unchanged after denied mutation",
-        after.rows[0].integrity !== "ranked" && after.rows[0].ranked_accepted === false);
+        after.rows[0].integrity === before.integrity
+        && Boolean(after.rows[0].ranked_accepted) === Boolean(before.ranked_accepted),
+        JSON.stringify({ before, after: after.rows[0] }));
     }
     // Owner history read still works.
     const mine = await asUser(userB, () =>
