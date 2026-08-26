@@ -431,6 +431,9 @@ end; $$;
 grant execute on function public.create_room(jsonb) to anon, authenticated;
 
 -- HOST-only start: verifies the sha256 token hash against the stored value.
+-- (Second parameter renamed from 0002's p_player_key, so the old function
+-- must be dropped first — CREATE OR REPLACE cannot rename parameters.)
+drop function if exists public.start_room(text, text);
 create or replace function public.start_room(p_code text, p_host_token text)
 returns void language plpgsql security definer set search_path = public as $$
 declare r public.rooms;
