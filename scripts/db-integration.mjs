@@ -331,7 +331,12 @@ try {
     const submitted = await asUser(userB, () =>
       client.query("SELECT public.submit_attempt($1::jsonb) r", [JSON.stringify(realAttempt)]),
     );
-    ok("member attempt persisted through submit_attempt", submitted.rows[0].r.accepted === true || submitted.rows[0].r.duplicate === true);
+    const sOut = submitted.rows[0].r;
+    // Classroom attempts are intentionally NON-official exercises: the RPC
+    // must PERSIST them (practice), never reject or rank them.
+    ok("member attempt persisted through submit_attempt",
+      typeof sOut.integrity === "string" && sOut.reason !== "rate_limited" && sOut.reason !== "invalid_evidence",
+      JSON.stringify(sOut));
     const done = await asUser(userB, () =>
       client.query("SELECT public.complete_assignment($1,$2) r", [assignmentId, realAttempt.client_id]),
     );
