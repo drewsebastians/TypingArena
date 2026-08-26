@@ -788,6 +788,32 @@ try {
     ok("owner can remove members", kicked.rowCount === 1 || kicked.rows.length === 1);
     // Restore B's membership for any downstream readers.
     await asUser(userB, () => client.query("SELECT public.join_team('TESTCODE99')"));
+    // REGRESSION (pass V): authenticated roster reads must not hit
+    // 'infinite recursion detected in policy' (self-referencing 0002 policy).
+    const roster = await asUser(userB, () =>
+      client.query("select count(*) c from public.team_members where team_id=$1", [teamId]),
+    );
+    ok("member can read team roster without RLS recursion", Number(roster.rows[0].c) >= 2, JSON.stringify(roster.rows[0]));
+    // REGRESSION (pass V): browser roles cannot touch rate-limit buckets.
+    const denied = await asUser(userB, () => {
+      return client
+        .query("begin")
+        .then(() =>
+          client.query("SET LOCAL ROLE authenticated").then(() =>
+            client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: userB, role: "authenticated" })]).then(async () => {
+              let blocked = false;
+              try {
+                await client.query("delete from public.rate_limits");
+              } catch {
+                blocked = true;
+              }
+              await client.query("ROLLBACK").catch(() => undefined);
+              return blocked;
+            }),
+          ),
+        );
+    });
+    ok("rate_limits are locked away from browser roles", denied === true);
   }
 
   // 18 — CAREER ASSIGNMENTS + ROOM CANCELLATION (closure pass IV)
