@@ -1,7 +1,8 @@
 # TypingArena â€” Blueprint Completion Report (v5, final closure audit II)
 
-**Date:** 2026-08-25 Â· **Audited tree:** `main` @ 7bc06d4 + closure passes I & II (see `git log`/working tree; upstream unchanged at audit time)
-**Method:** inspect â†’ implement â†’ unit/component test â†’ build â†’ Playwright (desktop+mobile) â†’ DB-integration suite expansion (17 scenario groups) for CI. No work deferred that can be done in-repository.
+**Date:** 2026-08-25 · **Landed:** 2026-08-26 via PR #1 — public main @ 0349d5b58583a8209c38de0a48325e788cbadde8
+**Proof:** CI + Backend-integration (local Supabase, migrations 0001–0014, 103/103 DB assertions) + Deploy all SUCCESS on merged main; desktop+mobile Playwright 23/23 each; 162/162 unit/component tests. Full evidence: docs/FINAL_ENGINEERING_FREEZE_EVIDENCE.md.
+**Method:** inspect → implement → test → build → Playwright → GitHub-Actions DB-integration against real local Supabase. No work deferred that can be done in-repository.
 
 **Status vocabulary:** COMPLETE Â· COMPLETE â€” EXTERNAL ACTIVATION REQUIRED Â· COMPLETE WITH EXPLICIT CASUAL-INTEGRITY LIMITATION. Nothing else remains.
 
