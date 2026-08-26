@@ -438,7 +438,7 @@ try {
     ok("definition leaks no owner identity", !("owner_id" in def.rows[0].d) && !("email" in def.rows[0].d));
 
     await expectError("invalid invite rejected", () =>
-      asAnon(() => client.query("SELECT public.fetch_assessment_definition('BOGUS00000')")), "invite_invalid_or_expired");
+      asAnon(() => client.query("SELECT public.fetch_assessment_definition('BOGUS00000')")), "invite_invalid");
 
     // Expired invite rejected for both definition fetch AND submission.
     const expired = await asUser(userA, () =>
@@ -448,11 +448,11 @@ try {
       ),
     );
     await expectError("expired invite rejected on fetch", () =>
-      asAnon(() => client.query("SELECT public.fetch_assessment_definition($1)", [expired.rows[0].invite_code])), "invite_invalid_or_expired");
+      asAnon(() => client.query("SELECT public.fetch_assessment_definition($1)", [expired.rows[0].invite_code])), "invite_expired");
     await expectError("expired invite rejected on submission", () =>
       asAnon(() => client.query("SELECT public.submit_assessment_result($1::jsonb)", [
-        JSON.stringify({ invite_code: expired.rows[0].invite_code, candidate_key: "c1", results: { modules: [{ label: "m", wpm: 40, accuracy: 90 }] } }),
-      ])), "invite_invalid_or_expired");
+        JSON.stringify({ invite_code: expired.rows[0].invite_code, candidate_key: "c1", results: { modules: [{ label: "m", kind: "typing-sprint", ref: "sprint", wpm: 40, accuracy: 90 }] } }),
+      ])), "invite_invalid_expired_or_revoked");
 
     // Valid candidate submission persists; duplicates collapse.
     const validModules = [
