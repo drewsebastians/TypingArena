@@ -40,7 +40,7 @@ export default function TranscriptionLibraryPanel() {
         <button onClick={() => setActiveId(null)} className="mb-3 text-sm underline">| library</button>
         <h2 className="text-xl font-black">{clip.topic}</h2>
         <p className="text-xs uppercase tracking-widest text-zinc-500">
-          {clip.language === "en" ? "English" : "Bahasa Indonesia"} Â· {clip.difficulty} Â· ~{clip.durationSec}s Â· voice {clip.speakerVoice}
+          {clip.language === "en" ? "English" : "Bahasa Indonesia"} · {clip.difficulty} · ~{clip.durationSec}s · voice {clip.speakerVoice}
         </p>
         <div className="mt-4">
           <TranscriptionEngine key={clip.id} item={clip} />
@@ -78,7 +78,7 @@ export default function TranscriptionLibraryPanel() {
               <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.difficulty === "hard" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{c.difficulty}</span>
             </div>
             <div className="mt-1 text-xs text-zinc-500">
-              {c.language === "en" ? "English" : "Bahasa Indonesia"} Â· ~{Math.max(30, c.durationSec)}s Â· {c.tags.join(", ") || c.source.split(" ")[0]}
+              {c.language === "en" ? "English" : "Bahasa Indonesia"} · ~{Math.max(30, c.durationSec)}s · {c.tags.join(", ") || c.source.split(" ")[0]}
             </div>
           </button>
         ))}

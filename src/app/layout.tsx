@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Train and prove how accurately and quickly you turn what you see or hear into text. Timed typing tests, real dictation audio, transcription sprints, Daily Arena and ranked boards. English + Bahasa Indonesia. Free, no login required.",
+    "Train and prove how accurately and quickly you turn what you see or hear into text. Timed typing tests, real dictation audio, transcription sprints, Daily Arena and ranked boards. English + Bahasa Indonesia. Free, no setup required.",
   alternates: {
     canonical: "/",
   },

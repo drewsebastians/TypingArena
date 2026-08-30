@@ -26,6 +26,8 @@ import { BASE_PATH } from "@/lib/config";
 import { saveDictationResult } from "@/lib/history";
 import { audioEvidence, queueAttempt } from "@/lib/sync";
 import { track } from "@/lib/analytics";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
+import ResultSection from "@/components/tool/ResultSection";
 
 function newId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -37,12 +39,16 @@ export default function DictationEngine({
   noiseLevel,
   exerciseId,
   onComplete,
+  onLifecycleChange,
+  syncPolicy = "local",
 }: {
   item: DictationItem;
   noiseLevel?: string;
   /** Overrides the clip id in the persisted result (e.g. assignment binding). */
   exerciseId?: string;
   onComplete?: (r: DictationResult) => void;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  syncPolicy?: "local" | "shared";
 }) {
   const [typed, setTyped] = useState("");
   const [playing, setPlaying] = useState(false);
@@ -55,6 +61,33 @@ export default function DictationEngine({
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const trackerRef = useRef<PlaybackTracker | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const onLifecycleRef = useRef(onLifecycleChange);
+
+  useEffect(() => {
+    onLifecycleRef.current = onLifecycleChange;
+  }, [onLifecycleChange]);
+
+  useEffect(() => {
+    onLifecycleRef.current?.("ready");
+    return () => {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("idle");
+    };
+  }, [item.id]);
+
+  useEffect(() => {
+    if (submitted) {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("result");
+    } else if (startedAt !== null) {
+      document.documentElement.setAttribute("data-exercise-active", "");
+      onLifecycleRef.current?.("active");
+      track("task_started", { task: "dictation", language: item.language });
+    } else {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("ready");
+    }
+  }, [item.language, startedAt, submitted]);
 
   useEffect(() => {
     track("dictation_start", { language: item.language, difficulty: item.difficulty, speed: item.speed, exerciseId: item.id });
@@ -163,7 +196,8 @@ export default function DictationEngine({
       timestamp: now,
     };
     saveDictationResult(res);
-    void queueAttempt(audioEvidence(res, "dictation"));
+    onLifecycleRef.current?.("completing");
+    if (syncPolicy === "shared") void queueAttempt(audioEvidence(res, "dictation"));
     setSubmitted(res);
     onComplete?.(res);
     audioElRef.current?.pause();
@@ -173,6 +207,7 @@ export default function DictationEngine({
       replayCount: res.playback.replayCount, language: item.language,
       integrity,
     });
+    track("task_completed", { task: "dictation", language: item.language, integrity });
     if (pasteFlag) track("paste_detected", { source: "dictation" });
     if (integrity !== "ranked") track("session_unranked", { reason: reasons.join(",") });
   };
@@ -191,8 +226,7 @@ export default function DictationEngine({
 
   if (submitted) {
     return (
-      <div className="w-full max-w-3xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-lg font-bold">Dictation Result</h3>
+      <ResultSection title="Dictation result" className="w-full max-w-3xl">
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Metric label="Strict" value={`${submitted.strictScore}%`} />
           <Metric label="Normalized" value={`${submitted.normalizedScore}%`} />
@@ -215,7 +249,7 @@ export default function DictationEngine({
           <div className="mt-1 font-mono text-sm"><span className="text-zinc-500">You typed:</span> {typed || <em>(empty)</em>}</div>
         </details>
         <button onClick={() => window.location.reload()} className="mt-4 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">Next clip ↻</button>
-      </div>
+      </ResultSection>
     );
   }
 

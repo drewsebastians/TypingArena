@@ -1,17 +1,22 @@
 "use client";
 // Shared dictation workspace: clip selection + engine. Static audio only.
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import DictationEngine from "@/components/DictationEngine";
 import { getDictationByLang } from "@/lib/content/dictation";
 import type { DictationItem, DictationResult, Language } from "@/lib/types";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
+import NextStepCard from "@/components/tool/NextStepCard";
 
 export default function DictationPanel({
   initialLanguage = "en",
   lockLanguage = false,
+  onLifecycleChange,
+  syncPolicy = "local",
 }: {
   initialLanguage?: Language;
   lockLanguage?: boolean;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  syncPolicy?: "local" | "shared";
 }) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
   const [clipIdx, setClipIdx] = useState(0);
@@ -39,17 +44,26 @@ export default function DictationPanel({
 
       {!lastResult && <ClipMeta clip={clip} index={clipIdx % clips.length} total={clips.length} />}
 
-      <DictationEngine key={`${clip.id}-${clipIdx}`} item={clip} onComplete={setLastResult} />
+      <DictationEngine
+        key={`${clip.id}-${clipIdx}`}
+        item={clip}
+        onComplete={setLastResult}
+        onLifecycleChange={onLifecycleChange}
+        syncPolicy={syncPolicy}
+      />
 
       {lastResult && (
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <button onClick={nextClip} className="rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+        <NextStepCard
+          title="Keep the practice moving"
+          body="Try another clip, then step up to a longer transcription sprint."
+          steps={[{ href: "/transcription-practice", label: "Step up to Transcription" }]}
+        >
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button onClick={nextClip} className="inline-flex min-h-11 items-center rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
             Next clip →
           </button>
-          <Link href="/transcription-practice" className="rounded-full border border-amber-400 bg-amber-50 px-5 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-            Step up to Transcription →
-          </Link>
-        </div>
+          </div>
+        </NextStepCard>
       )}
     </div>
   );

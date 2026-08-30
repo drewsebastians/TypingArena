@@ -73,16 +73,16 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
             else navigator.clipboard.writeText(shareText).catch(() => {});
             track("share_clicked", { wpm: result.grossWpm });
           }}
-          className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"
+          className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"
         >
           Share result
         </button>
-        <Link href="/dictation" onClick={() => track("next_recommended_start", { from: "typing", to: "dictation" })} className="rounded-full border border-amber-400 bg-amber-50 px-5 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <Link href="/dictation" onClick={() => { track("next_recommended_start", { from: "typing", to: "dictation" }); track("result_next_action_clicked", { to: "/dictation" }); }} className="min-h-11 rounded-full border border-amber-400 bg-amber-50 px-5 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           Test your listening →
         </Link>
-        <Link href="/friends" className="rounded-full border border-violet-300 bg-violet-50 px-5 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200">Challenge friend</Link>
-        <Link href="/daily-arena" className="rounded-full border border-emerald-300 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Daily Arena</Link>
-        {onNext && <button onClick={onNext} className="rounded-full bg-zinc-100 px-5 py-2 text-sm font-semibold dark:bg-zinc-800">Next exercise</button>}
+        <Link href="/friends" onClick={() => track("result_next_action_clicked", { to: "/friends" })} className="min-h-11 rounded-full border border-violet-300 bg-violet-50 px-5 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200">Challenge friend</Link>
+        <Link href="/daily-arena" onClick={() => track("result_next_action_clicked", { to: "/daily-arena" })} className="min-h-11 rounded-full border border-emerald-300 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Daily Arena</Link>
+        {onNext && <button onClick={() => { track("result_next_action_clicked", { to: "next-exercise" }); onNext(); }} className="min-h-11 rounded-full bg-zinc-100 px-5 py-2 text-sm font-semibold dark:bg-zinc-800">Next exercise</button>}
       </div>
     </div>
   );
