@@ -11,8 +11,9 @@ Supabase/Auth/hosting/provider state, or deploying production.
 
 The immutable starting baseline is
 [`PR4_FINAL_INDEPENDENT_REVIEW_BASELINE.md`](./PR4_FINAL_INDEPENDENT_REVIEW_BASELINE.md).
-The exact ending head and final GitHub workflow IDs are updated here after the
-last push.
+The validated implementation head and its exact GitHub workflow IDs are
+recorded below. A later documentation-only update to this report is explicitly
+separated from that implementation proof.
 
 ## Git anchor
 
@@ -20,7 +21,7 @@ last push.
 | --- | --- |
 | Base | `origin/main` @ `b99779bc208c5abd2aa2e67e618927a2db949c42` |
 | Starting head | `d145113007eb7653ac172bd051f346c10f7e818b` |
-| Ending head | `RECORDED_AFTER_FINAL_PUSH` |
+| Ending implementation head | `e4d3a3a2a0009dd1dd3a39a085b9d7f409dd422f` |
 | Branch | `codex/goal-first-wave1` |
 | PR | [#4](https://github.com/drewsebastians/TypingArena/pull/4) |
 | Merge/deploy | NO / NO |
@@ -105,10 +106,12 @@ real-device, contrast, and real-user Core Web Vitals evidence remains external.
 ## Evidence reconciliation
 
 The old closure reports and DB evidence that referenced the pre-remediation
-run IDs or migration `0015` are historical snapshots. They are being updated
-to identify their historical scope and link this final report. Migration `0016`
-is the final public-board privacy addition. The current final-head run IDs and
-SHA below supersede older report references after the final push.
+run IDs or migration `0015` are historical snapshots. They now identify their
+historical scope and link this final report. Migration `0016` is the final
+public-board privacy addition. The implementation head and exact workflow IDs
+below supersede older report references. Any later commit in this task is
+documentation-only and does not change the proven source, migration, workflow,
+or test implementation.
 
 ## External blockers and recommendation
 
@@ -117,22 +120,36 @@ apply migrations `0001`–`0016`, enable Anonymous Sign-Ins, configure the exact
 canonical origin and public Supabase keys, run hosted smoke, then decide on
 analytics/AdSense/human-device validation. These are pre-deploy actions, not
 fabricated repository failures. Recommendation: **READY FOR PR APPROVAL,
-EXTERNAL PRE-DEPLOY ACTIONS REMAIN** once the final-head checks below are green.
+EXTERNAL PRE-DEPLOY ACTIONS REMAIN**; the validated implementation head below
+is green on both required GitHub workflows.
 
 ## Validation record
 
 | Gate | Exact result | Evidence anchor |
 | --- | --- | --- |
-| Clean install | PASS — `npm ci --no-audit --no-fund`, 912 packages | final local clean run |
+| Clean install | PASS — GitHub Node 22 `npm ci --no-audit --no-fund` (755 packages); local npm 10 clean install also passed | [CI run 33320616975](https://github.com/drewsebastians/TypingArena/actions/runs/33320616975) |
 | Lint | PASS | final local clean run |
 | Typecheck | PASS | final local clean run |
 | Unit/component tests | PASS — 19 files, 167 tests | final local clean run |
 | Static build | PASS — 30 routes | final local clean run |
-| Playwright desktop | PASS — 35 passed; two mobile-only tests skipped in this project | final local clean run / CI |
-| Playwright mobile | PASS — 35 passed; the desktop-only viewport/control matrix skipped in this project | final local clean run / CI |
-| DB integration | PENDING FINAL HEAD — local Supabase CLI/Docker unavailable; GitHub run recorded after push | final CI |
+| Playwright desktop + mobile | PASS — 70 passed, 4 project-scoped skips | [CI E2E job 99281970276](https://github.com/drewsebastians/TypingArena/actions/runs/33320616975/job/99281970276) |
+| DB integration | PASS — 123 passed, 0 failed through migrations `0001`–`0016` | [DB run 33320616966](https://github.com/drewsebastians/TypingArena/actions/runs/33320616966) |
+| GitHub CI check job | PASS — exact implementation head | [CI check job 99281819903](https://github.com/drewsebastians/TypingArena/actions/runs/33320616975/job/99281819903) |
 | Production readiness | PASS — demo/static; production fails closed without env | final local clean run |
 | No-runtime-AI/provider scan | PASS — clean production bundle | final local clean run |
 | Static smoke | PASS — routes, robots, sitemap, WAV | final local clean run |
 | Hosted smoke | NOT RUN — no safe real origin supplied | owner runbook |
 | Automated accessibility | PASS — independent route/viewport/drawer/reduced-motion/ad suite | final local clean run / CI |
+
+## Exact workflow authority
+
+Both required workflows completed successfully at the exact validated
+implementation head `e4d3a3a2a0009dd1dd3a39a085b9d7f409dd422f`:
+
+- [CI run 33320616975](https://github.com/drewsebastians/TypingArena/actions/runs/33320616975): `check` and `e2e` passed.
+- [Backend integration run 33320616966](https://github.com/drewsebastians/TypingArena/actions/runs/33320616966): `db-integration` passed.
+
+The follow-up commit that records this evidence is documentation-only. The
+owner should use the PR’s current head and check badges for the final merge
+decision; no merge, auto-merge, deployment, production SQL, Auth change, or
+provider activation was performed by this review.
