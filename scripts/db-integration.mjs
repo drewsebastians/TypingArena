@@ -786,11 +786,12 @@ try {
     );
     const roleAfter = await client.query("select role from public.team_members where team_id=$1 and user_id=$2", [teamId, userB]);
     ok("role remains admin after denied promotion", roleAfter.rows[0].role === "admin");
-    await expectError("admin cannot seize team ownership via teams UPDATE", () =>
-      asUser(userB, () => client.query("update public.teams set owner_id=$1 where id=$2", [userB, teamId])),
+    // Owner-only UPDATE → non-owner affects 0 rows (RLS silent deny).
+    const seize = await asUser(userB, () =>
+      client.query("update public.teams set owner_id=$1 where id=$2", [userB, teamId]),
     );
     const ownerAfter = await client.query("select owner_id from public.teams where id=$1", [teamId]);
-    ok("ownership unchanged after denied seizure", String(ownerAfter.rows[0].owner_id) === String(userA));
+    ok("ownership unchanged after denied seizure", Number(seize.rowCount) === 0 && String(ownerAfter.rows[0].owner_id) === String(userA));
     // Owner can remove a member/admin directly (kick power preserved).
     const kicked = await asUser(userA, () =>
       client.query("delete from public.team_members where team_id=$1 and user_id=$2 returning user_id", [teamId, userB]),
