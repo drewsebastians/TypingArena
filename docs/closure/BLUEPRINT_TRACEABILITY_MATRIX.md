@@ -13,7 +13,7 @@ EXTERNAL ACTION REQUIRED, and POST-LAUNCH VALIDATION.
 | --- | --- | --- | --- | --- |
 | B00 / R0 | Baseline, canonical documents, branch reconciliation | `docs/blueprint/`, `docs/goal-first/source/`, baseline evidence, current branch ancestry | `docs/goal-first/02_FOLLOWUP_BASELINE.md`, git history | COMPLETE — PROVEN |
 | B01 | Six goals and route contracts | `src/lib/goals.ts`, `src/lib/routeRegistry.ts`, navigation, sitemap | unit tests, 26 route definitions, 30 static routes | COMPLETE — PROVEN |
-| B02 / R1 | Anonymous identity, RLS, capability tokens | migration `0015_anonymous_identity_capabilities.sql`, `src/lib/remote.ts`, `src/lib/resourceAccess.ts` | GitHub DB integration run `33307829237`: migration through 0015, 117 passed / 0 failed | COMPLETE — PROVEN |
+| B02 / R1 | Anonymous identity, RLS, capability tokens | migration `0015_anonymous_identity_capabilities.sql`, `src/lib/remote.ts`, `src/lib/resourceAccess.ts` | GitHub DB integration run `33312001583`: migration through 0015, 117 passed / 0 failed | COMPLETE — PROVEN |
 | B03 | Local-first practice and no visible account UX | local history/sync, consent-gated analytics, no login controls | unit/E2E no-legacy-auth checks, production readiness scan | COMPLETE — PROVEN |
 | B04 | Global shell and progressive disclosure | `Header`, `LocaleProvider`, shared route navigation, mobile drawer | desktop/mobile E2E and 320px overflow test | COMPLETE — PROVEN |
 | B05 | Goal-First landing page | `src/app/page.tsx`, goal cards, embedded typing/dictation/transcription workspaces | Goal-First E2E: six goals and real first workspace | COMPLETE — PROVEN |

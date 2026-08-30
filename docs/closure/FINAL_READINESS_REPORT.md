@@ -42,7 +42,7 @@ to code and proof.
 
 ## E. DB/security evidence
 
-Fresh GitHub DB integration run `33307829237` applied migrations through 0015:
+Fresh GitHub DB integration run `33312001583` applied migrations through 0015:
 **117 passed, 0 failed**. It covers RLS, anonymous identity, ranked evidence,
 Daily binding/idempotency, capability lifecycle and scope, team/custom/
 assessment authorization, multiplayer host authority, and deletion. See
@@ -75,7 +75,8 @@ See `FINAL_SEO_MONETIZATION_REVIEW.md` and the analytics measurement plan.
 | Static export build | PASS — 30 routes |
 | Desktop Playwright | PASS — included in 59 total passes |
 | Mobile Playwright | PASS — included in 59 total passes |
-| DB integration through migration 0015 | PASS — 117/117, GitHub run 33307829237 |
+| DB integration through migration 0015 | PASS — 117/117, GitHub run 33312001583 |
+| Final PR CI + E2E workflow | PASS — GitHub run 33312001599 |
 | Production readiness gate | PASS for demo/static target; production target correctly fails closed without env |
 | No-runtime-AI/TTS scan | PASS — no forbidden bundle fingerprints |
 | Static route/audio/SEO smoke | PASS — readiness gate, sitemap/robots, 20/20 WAVs |

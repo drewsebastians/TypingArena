@@ -4,7 +4,7 @@
 
 - Workflow: `Backend integration (local Supabase)`
 - PR: [#4](https://github.com/drewsebastians/TypingArena/pull/4)
-- Run: [33307829237](https://github.com/drewsebastians/TypingArena/actions/runs/33307829237)
+- Run: [33312001583](https://github.com/drewsebastians/TypingArena/actions/runs/33312001583)
 - Migration reset: PASS, migrations `0001` through `0015` applied from a fresh local stack.
 - Runner: GitHub Actions Ubuntu runner with Docker and Supabase CLI.
 - Result: **117 passed, 0 failed**.
@@ -35,4 +35,4 @@
 
 ## Local limitation
 
-The workstation does not have Docker or the Supabase CLI, so the same scenarios cannot be run locally. The GitHub Actions run above is the authoritative real-database proof for this checkpoint. Hosted production migration/application remains an owner-controlled external action.
+The workstation does not have Docker or the Supabase CLI, so the same scenarios cannot be run locally. The GitHub Actions run above is the authoritative real-database proof for the final pushed closure. Hosted production migration/application remains an owner-controlled external action.

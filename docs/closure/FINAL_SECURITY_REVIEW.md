@@ -25,7 +25,7 @@ credentials were provided to this workspace.
 
 ## Database proof record
 
-GitHub Actions backend integration run `33307829237` reset a fresh stack and
+GitHub Actions backend integration run `33312001583` reset a fresh stack and
 applied migrations 0001–0015. It completed with **117 passed, 0 failed**.
 The run includes RLS, anonymous identity, ranked acceptance/rejection, Daily
 binding/idempotency, capability lifecycle, team/custom/assessment scope,
