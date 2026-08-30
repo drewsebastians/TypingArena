@@ -86,7 +86,7 @@ export default function ProgressPage() {
 
       <div className="mt-6">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Progress history">
-          {(["typing", "dictation", "transcription"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === item ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>{item}</button>)}
+          {(["typing", "dictation", "transcription"] as const).map((item) => <button type="button" key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === item ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>{item}</button>)}
         </div>
         <div className="mt-3 divide-y rounded-xl border bg-white dark:bg-zinc-900">
           {tab === "typing" && (typing.length === 0 ? <Empty label="No typing tests yet" href="/typing-test" cta="Take a 30s sprint" /> : typing.slice(0, 25).map((r) => <Row key={r.id} head={`${r.grossWpm} WPM • ${r.accuracy}%`} sub={`${r.durationSec}s ${r.language} • ${new Date(r.timestamp).toLocaleString()} • errors fixed ${r.correctedErrors}/unfixed ${r.uncorrectedErrors}`} badge={r.integrity} />))}
@@ -128,7 +128,7 @@ function NicknamePanel() {
       <p className="mt-1 text-xs text-zinc-500">Optional. This is the only public identity shown on ranked or shared features.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input id="progress-nickname" value={value} onChange={(e) => setValue(e.target.value)} maxLength={24} placeholder="e.g. steady typer" className="min-h-11 flex-1 rounded-lg border px-3 text-sm dark:bg-zinc-800" />
-        <button disabled={saving} onClick={() => void save()} className="min-h-11 rounded-full bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "Saving…" : "Save nickname"}</button>
+        <button type="button" disabled={saving} onClick={() => void save()} className="min-h-11 rounded-full bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "Saving…" : "Save nickname"}</button>
       </div>
       {message && <p role="status" className="mt-2 text-xs text-zinc-500">{message}</p>}
     </div>

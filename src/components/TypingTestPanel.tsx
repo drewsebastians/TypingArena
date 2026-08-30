@@ -65,23 +65,23 @@ export default function TypingTestPanel({
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900">
+        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="test language">
           {(["en", "id"] as const).map((l) => (
-            <button key={l} onClick={() => { setLanguage(l); nextExercise(); }} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={l} onClick={() => { setLanguage(l); nextExercise(); }} aria-pressed={language === l} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {l === "en" ? "English" : "Indonesia"}
             </button>
           ))}
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="test duration">
           {DURATIONS.map((d) => (
-            <button key={d} onClick={() => { setDuration(d); nextExercise(); }} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${duration === d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={d} onClick={() => { setDuration(d); nextExercise(); }} aria-pressed={duration === d} className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-semibold ${duration === d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {d === 300 ? "5 min" : `${d}s`}
             </button>
           ))}
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="content mode">
           {MODES.map((m) => (
-            <button key={m.id} onClick={() => { setMode(m.id); nextExercise(); }} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${mode === m.id ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={m.id} onClick={() => { setMode(m.id); nextExercise(); }} aria-pressed={mode === m.id} className={`min-h-11 rounded-full px-3 py-1.5 text-xs font-semibold ${mode === m.id ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {m.label}
             </button>
           ))}

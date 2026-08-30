@@ -111,6 +111,7 @@ export default function Header() {
           {GROUPS.map((group) => (
             <div key={group.id} className="relative">
               <button
+                type="button"
                 aria-expanded={openGroup === group.id}
                 aria-haspopup="menu"
                 onClick={() => setOpenGroup(openGroup === group.id ? null : group.id)}
@@ -127,13 +128,14 @@ export default function Header() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <button onClick={flipLocale} aria-label={`Switch to ${locale === "en" ? "Indonesian" : "English"}`} className="min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold uppercase">
+          <button type="button" onClick={flipLocale} aria-label={`Switch to ${locale === "en" ? "Indonesian" : "English"}`} className="min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold uppercase">
             {locale === "en" ? "EN → ID" : "ID → EN"}
           </button>
           <div className="hidden min-h-11 items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 sm:flex dark:border-orange-900 dark:bg-orange-950 dark:text-orange-300" title={t("nav.progressFull")}>
             <span aria-hidden>🔥</span> {streak}
           </div>
           <button
+            type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label={t("nav.menu")}
             aria-expanded={drawerOpen}
@@ -147,11 +149,11 @@ export default function Header() {
 
       {drawerOpen && (
         <div className="fixed inset-0 z-[60] lg:hidden">
-          <button aria-label="Close menu backdrop" className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+          <button type="button" aria-label="Close menu backdrop" className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
           <div ref={drawerRef} id="mobile-drawer" role="dialog" aria-modal="true" aria-label={t("nav.menu")} className="absolute right-0 top-0 flex h-full w-[86%] max-w-[360px] flex-col overflow-y-auto bg-white p-4 shadow-xl dark:bg-zinc-950">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold">{t("nav.menu")}</span>
-              <button ref={drawerCloseRef} onClick={() => setDrawerOpen(false)} aria-label={t("nav.closeMenu")} className="min-h-11 min-w-11 rounded-full border px-3 py-1.5 text-sm">✕</button>
+              <button type="button" ref={drawerCloseRef} onClick={() => setDrawerOpen(false)} aria-label={t("nav.closeMenu")} className="min-h-11 min-w-11 rounded-full border px-3 py-1.5 text-sm">✕</button>
             </div>
             <div className="mt-4 flex flex-col gap-5">
               {PRIMARY_ROUTE_IDS.map((id) => {
@@ -171,7 +173,7 @@ export default function Header() {
               ))}
             </div>
             <div className="mt-auto flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <button onClick={flipLocale} className="min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold uppercase">{locale === "en" ? "English → Indonesia" : "Indonesia → English"}</button>
+              <button type="button" onClick={flipLocale} className="min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold uppercase">{locale === "en" ? "English → Indonesia" : "Indonesia → English"}</button>
               <span className="text-xs text-zinc-500">🔥 {streak} day streak</span>
             </div>
           </div>

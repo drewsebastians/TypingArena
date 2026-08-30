@@ -67,6 +67,7 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
+          type="button"
           onClick={() => {
             track("share_card_created", { wpm: result.grossWpm });
             if (navigator.share) navigator.share({ title: "TypingArena", text: shareText }).catch(() => {});
@@ -82,7 +83,7 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
         </Link>
         <Link href="/friends" onClick={() => track("result_next_action_clicked", { to: "/friends" })} className="min-h-11 rounded-full border border-violet-300 bg-violet-50 px-5 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200">Challenge friend</Link>
         <Link href="/daily-arena" onClick={() => track("result_next_action_clicked", { to: "/daily-arena" })} className="min-h-11 rounded-full border border-emerald-300 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Daily Arena</Link>
-        {onNext && <button onClick={() => { track("result_next_action_clicked", { to: "next-exercise" }); onNext(); }} className="min-h-11 rounded-full bg-zinc-100 px-5 py-2 text-sm font-semibold dark:bg-zinc-800">Next exercise</button>}
+        {onNext && <button type="button" onClick={() => { track("result_next_action_clicked", { to: "next-exercise" }); onNext(); }} className="min-h-11 rounded-full bg-zinc-100 px-5 py-2 text-sm font-semibold dark:bg-zinc-800">Next exercise</button>}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 "use client";
-// Transcription Library ” browsable, filterable clip collection.
+// Transcription Library — browsable, filterable clip collection.
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TRANSCRIPTION_CLIPS } from "@/lib/content/dictation";
@@ -7,10 +7,16 @@ import TranscriptionEngine from "@/components/TranscriptionEngine";
 import type { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
+import { useLocale } from "@/components/LocaleProvider";
+import { SafeAdSlot } from "@/components/AdSlot";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import { getRouteByPath } from "@/lib/routeRegistry";
 
 type LenFilter = "any" | "short" | "long";
 
 export default function TranscriptionLibraryPanel() {
+  const { locale } = useLocale();
   const [language, setLanguage] = useState<Language | "all">("all");
   const [difficulty, setDifficulty] = useState<"all" | "medium" | "hard">("all");
   const [lenFilter, setLenFilter] = useState<LenFilter>("any");
@@ -36,43 +42,45 @@ export default function TranscriptionLibraryPanel() {
   if (activeId) {
     const clip = TRANSCRIPTION_CLIPS.find((c) => c.id === activeId)!;
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <button onClick={() => setActiveId(null)} className="mb-3 text-sm underline">| library</button>
-        <h2 className="text-xl font-black">{clip.topic}</h2>
-        <p className="text-xs uppercase tracking-widest text-zinc-500">
-          {clip.language === "en" ? "English" : "Bahasa Indonesia"} · {clip.difficulty} · ~{clip.durationSec}s · voice {clip.speakerVoice}
-        </p>
-        <div className="mt-4">
-          <TranscriptionEngine key={clip.id} item={clip} />
-        </div>
-      </div>
+      <ToolPageShell
+        eyebrow={locale === "id" ? "Pustaka transkripsi" : "Transcription library"}
+        title={clip.topic}
+        description={`${clip.language === "en" ? "English" : "Bahasa Indonesia"} · ${clip.difficulty} · ~${clip.durationSec}s · voice ${clip.speakerVoice}`}
+      >
+        <button type="button" onClick={() => setActiveId(null)} className="mb-3 min-h-11 text-sm underline">← {locale === "id" ? "kembali ke pustaka" : "back to library"}</button>
+        <TranscriptionEngine key={clip.id} item={clip} />
+        <SafeAdSlot slot="transcription-library-result" context="outside-task" className="mx-auto mt-8 max-w-3xl" />
+        {getRouteByPath("/transcription-library") && <RelatedTools route={getRouteByPath("/transcription-library")!} />}
+      </ToolPageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <h1 className="text-2xl font-black">{t("library.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Every clip is an original reviewed narration with static audio ({TRANSCRIPTION_CLIPS.length} clips, 30s+). Transcript stays hidden until you submit ” that&apos;s the exercise.
-      </p>
+    <ToolPageShell
+      eyebrow={locale === "id" ? "Latihan" : "Practice"}
+      title={locale === "id" ? "Pustaka Transkripsi" : t("library.title")}
+      description={locale === "id" ? `Setiap klip adalah narasi orisinal yang ditinjau dengan audio statis (${TRANSCRIPTION_CLIPS.length} klip, 30 detik+). Transkrip tersembunyi sampai dikirim.` : `Every clip is an original reviewed narration with static audio (${TRANSCRIPTION_CLIPS.length} clips, 30s+). The transcript stays hidden until you submit.`}
+    >
+      <div className="mx-auto max-w-4xl">
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Chip active={language === "all"} onClick={() => setLanguage("all")} label="All languages" />
+      <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label={locale === "id" ? "Filter klip" : "Clip filters"}>
+        <Chip active={language === "all"} onClick={() => setLanguage("all")} label={locale === "id" ? "Semua bahasa" : "All languages"} />
         <Chip active={language === "en"} onClick={() => setLanguage("en")} label="English" />
         <Chip active={language === "id"} onClick={() => setLanguage("id")} label="Indonesia" />
         <span className="mx-2 w-px bg-zinc-200 dark:bg-zinc-700" />
-        <Chip active={difficulty === "all"} onClick={() => setDifficulty("all")} label="Any difficulty" />
+        <Chip active={difficulty === "all"} onClick={() => setDifficulty("all")} label={locale === "id" ? "Semua tingkat" : "Any difficulty"} />
         <Chip active={difficulty === "medium"} onClick={() => setDifficulty("medium")} label="Medium" />
         <Chip active={difficulty === "hard"} onClick={() => setDifficulty("hard")} label="Hard" />
         <span className="mx-2 w-px bg-zinc-200 dark:bg-zinc-700" />
-        <Chip active={lenFilter === "any"} onClick={() => setLenFilter("any")} label="Any length" />
+        <Chip active={lenFilter === "any"} onClick={() => setLenFilter("any")} label={locale === "id" ? "Semua durasi" : "Any length"} />
         <Chip active={lenFilter === "short"} onClick={() => setLenFilter("short")} label="30–60s" />
         <Chip active={lenFilter === "long"} onClick={() => setLenFilter("long")} label="60s+" />
       </div>
+      <p className="mt-3 text-xs text-zinc-500">{clips.length} {locale === "id" ? "klip cocok" : "matching clips"}</p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {clips.map((c) => (
-          <button key={c.id} onClick={() => setActiveId(c.id)} className="rounded-xl border bg-white p-4 text-left hover:border-black dark:bg-zinc-900 dark:hover:border-white">
+          <button type="button" key={c.id} onClick={() => { setActiveId(c.id); track("library_clip_started", { clipId: c.id, language: c.language, difficulty: c.difficulty }); }} className="min-h-28 rounded-xl border bg-white p-4 text-left hover:border-black dark:bg-zinc-900 dark:hover:border-white">
             <div className="flex items-center justify-between">
               <span className="font-bold">{c.topic}</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.difficulty === "hard" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{c.difficulty}</span>
@@ -87,14 +95,17 @@ export default function TranscriptionLibraryPanel() {
         )}
       </div>
 
-      <Link href="/transcription-practice" className="mt-6 inline-block rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">Sprint mode →</Link>
-    </div>
+      <Link href="/transcription-practice" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">Sprint mode →</Link>
+      <SafeAdSlot slot="transcription-library" context="discovery" className="mt-8" />
+      {getRouteByPath("/transcription-library") && <RelatedTools route={getRouteByPath("/transcription-library")!} />}
+      </div>
+    </ToolPageShell>
   );
 }
 
 function Chip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
-    <button onClick={onClick} aria-pressed={active} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${active ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>
+    <button type="button" onClick={onClick} aria-pressed={active} className={`min-h-11 rounded-full px-3 py-1.5 text-xs font-semibold ${active ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>
       {label}
     </button>
   );

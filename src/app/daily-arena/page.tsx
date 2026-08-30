@@ -12,7 +12,6 @@ import { getDailyChallenge, formatDailyTitle } from "@/lib/daily";
 import { arenaDateString } from "@/lib/datetime";
 import TypingEngine from "@/components/TypingEngine";
 import DictationPanel from "@/components/DictationPanel";
-import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
   fetchDailyBoard,
@@ -23,8 +22,15 @@ import { track } from "@/lib/analytics";
 import { typingEvidence } from "@/lib/sync";
 import type { DailyChallenge } from "@/lib/daily";
 import type { TypingResult } from "@/lib/types";
+import { SafeAdSlot } from "@/components/AdSlot";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import NextStepCard from "@/components/tool/NextStepCard";
+import { getRouteByPath } from "@/lib/routeRegistry";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function DailyArena() {
+  const { locale } = useLocale();
   const [challenge, setChallenge] = useState<DailyChallenge | null>(null);
   const [iso, setIso] = useState<string | null>(null);
   const [result, setResult] = useState<TypingResult | null>(null);
@@ -90,17 +96,22 @@ export default function DailyArena() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <ToolPageShell
+      eyebrow={locale === "id" ? "Kompetisi" : "Compete"}
+      title={`${formatDailyTitle(challenge.iso)} ${locale === "id" ? "Challenge" : "Challenge"}`}
+      description={locale === "id" ? "Satu tantangan standar per hari. Mainkan secara lokal, lalu publikasikan hasil bersih ke papan bersama saat backend kompetisi tersedia." : "One standardized challenge per day. Play locally, then publish a clean result to the shared board when the competition backend is available."}
+    >
+      <div className="mx-auto max-w-3xl">
       <div className="rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 p-6 text-white">
         <div className="text-xs uppercase tracking-widest opacity-80">Daily Arena • {iso} • resets midnight Asia/Jakarta</div>
-        <h1 className="mt-1 text-2xl font-black">{formatDailyTitle(challenge.iso)} Challenge</h1>
+        <h2 className="mt-1 text-2xl font-black">{formatDailyTitle(challenge.iso)} Daily exercise</h2>
         <p className="mt-1 text-sm opacity-90">Everyone gets the same standardized test today. Publish a clean result to the shared board when you finish.</p>
         <div className="mt-2 text-xs opacity-75">Only clean attempts (no paste, no impossible bursts) enter the ranked board.</div>
       </div>
 
       <div className="mt-4 flex justify-center gap-2">
-        <button onClick={() => setTab("typing")} className={`rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "typing" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Typing</button>
-        <button onClick={() => setTab("dictation")} className={`rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "dictation" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Dictation</button>
+        <button type="button" onClick={() => setTab("typing")} aria-pressed={tab === "typing"} className={`min-h-11 rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "typing" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Typing</button>
+        <button type="button" onClick={() => setTab("dictation")} aria-pressed={tab === "dictation"} className={`min-h-11 rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "dictation" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Dictation</button>
       </div>
 
       <div className="mt-6">
@@ -160,8 +171,17 @@ export default function DailyArena() {
         )}
         <Link href="/leaderboard" className="mt-3 inline-block text-sm underline">All-time leaderboard →</Link>
       </div>
-      <AdSlot slot="daily-arena" className="mt-6" />
-    </div>
+      {result && tab === "typing" && (
+        <NextStepCard
+          title={locale === "id" ? "Langkah berikutnya" : "Keep competing"}
+          body={locale === "id" ? "Lihat papan peringkat atau lanjutkan latihan menyimak setelah tantangan hari ini." : "Check the board, or keep the audio side of your skill moving after today’s challenge."}
+          steps={[{ href: "/leaderboard", label: "Leaderboard" }, { href: "/dictation", label: "Try dictation" }]}
+        />
+      )}
+      <SafeAdSlot slot="daily-arena" context="outside-task" className="mt-6" />
+      {getRouteByPath("/daily-arena") && <RelatedTools route={getRouteByPath("/daily-arena")!} />}
+      </div>
+    </ToolPageShell>
   );
 }
 

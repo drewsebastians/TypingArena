@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/config";
+import { routeMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy",
-  description: "How TypingArena handles local practice data, opt-in shared features, consent-based analytics, and deletion.",
-};
+export const metadata: Metadata = routeMetadata(
+  "/privacy",
+  "Privacy",
+  "How TypingArena handles local practice data, opt-in shared features, consent-based analytics, and deletion.",
+);
 
 const sections: Array<{ h: string; body: React.ReactNode }> = [
   {

@@ -370,7 +370,7 @@ export default function TypingEngine({
         <div className="flex items-center gap-2">
           {pasteFlag && <span role="status" className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">paste blocked — flagged</span>}
           {focusLost > 0 && <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">focus lost ×{focusLost}</span>}
-          <button onClick={reset} className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Restart</button>
+          <button type="button" onClick={reset} className="min-h-11 rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Restart</button>
         </div>
       </div>
 

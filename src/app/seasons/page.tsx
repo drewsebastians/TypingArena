@@ -1,9 +1,21 @@
+"use client";
 import SeasonsPanel from "@/components/SeasonsPanel";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import { getRouteByPath } from "@/lib/routeRegistry";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function SeasonsPage() {
+  const { locale } = useLocale();
+  const route = getRouteByPath("/seasons");
   return (
-    <main>
+    <ToolPageShell
+      eyebrow={locale === "id" ? "Kompetisi" : "Compete"}
+      title={locale === "id" ? "Musim Kompetitif" : "Ranked Seasons"}
+      description={locale === "id" ? "Peringkat bulanan yang hanya menghitung upaya ranked yang diterima server." : "Monthly ranked ladders that count only server-accepted ranked attempts."}
+    >
       <SeasonsPanel />
-    </main>
+      {route && <RelatedTools route={route} />}
+    </ToolPageShell>
   );
 }

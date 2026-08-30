@@ -235,7 +235,7 @@ export default function TranscriptionEngine({
           <summary className="cursor-pointer font-medium">Compare transcript</summary>
           <div className="mt-2 font-mono text-sm"><span className="text-zinc-500">Reference:</span> {item.transcript}</div>
         </details>
-        <button onClick={() => window.location.reload()} className="mt-4 rounded-full border px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 min-h-11 rounded-full border px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
           Next clip ↻
         </button>
       </ResultSection>
@@ -255,6 +255,7 @@ export default function TranscriptionEngine({
           onSeeked={syncPlayback}
         />
         <button
+          type="button"
           onClick={handlePlayPause}
           className={`rounded-full px-6 py-3 text-sm font-bold ${playing ? "bg-zinc-300 text-zinc-700" : "bg-black text-white dark:bg-white dark:text-black"}`}
           aria-label={playing ? "pause clip" : "play clip"}
@@ -278,7 +279,7 @@ export default function TranscriptionEngine({
         className="mt-1 w-full rounded-lg border p-3 font-mono dark:bg-zinc-800"
       />
       <div className="mt-3 flex items-center gap-3">
-        <button onClick={handleSubmit} disabled={playback.playCount === 0 || !typed.trim()} className="rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">
+        <button type="button" onClick={handleSubmit} disabled={playback.playCount === 0 || !typed.trim()} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">
           Submit transcription
         </button>
         {pasteFlag && <span className="text-xs text-red-600">Paste blocked — attempt will be flagged.</span>}

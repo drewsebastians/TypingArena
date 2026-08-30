@@ -42,6 +42,7 @@ export default function TranscriptionPanel({
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="transcription language">
           {(["en", "id"] as const).map((l) => (
             <button
+              type="button"
               key={l}
               onClick={() => { setLanguage(l); setClipIdx(0); setLastResult(null); }}
               className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600 dark:text-zinc-300"}`}
@@ -73,7 +74,7 @@ export default function TranscriptionPanel({
           steps={[{ href: "/progress", label: "View progress" }]}
         >
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-          <button onClick={nextClip} className="inline-flex min-h-11 items-center rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+          <button type="button" onClick={nextClip} className="inline-flex min-h-11 items-center rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
             Next clip →
           </button>
           </div>

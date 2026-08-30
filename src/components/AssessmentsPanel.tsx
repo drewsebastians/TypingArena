@@ -270,7 +270,6 @@ function CreatorPanel() {
   if (!IS_REMOTE_CONFIGURED) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("assess.title")}</h1>
         <p className="mt-3 rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")}</p>
       </div>
     );
@@ -280,11 +279,6 @@ function CreatorPanel() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">{t("assess.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Build a short standardized assessment for candidates or team members. Candidates open an invite link directly. Results are visible only to you. This is a practice/operational skills check, not a legally validated hiring instrument.
-      </p>
-
       <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Data-entry screening v1" aria-label="assessment title" maxLength={80} className="w-full rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
         <fieldset className="mt-3">
@@ -303,6 +297,7 @@ function CreatorPanel() {
           </div>
         </fieldset>
         <button
+          type="button"
           onClick={async () => {
             try {
               const created = await createAssessment({
@@ -320,7 +315,7 @@ function CreatorPanel() {
             }
           }}
           disabled={title.trim().length < 2 || selected.length === 0}
-          className="mt-4 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+          className="mt-4 min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
         >
           Create + generate invite link
         </button>
@@ -335,8 +330,9 @@ function CreatorPanel() {
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
             <span className="flex-1 font-semibold">{sanitizeTitle(a.title)}</span>
             <code className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-800">{a.invite_code}</code>
-            <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?invite=${a.invite_code}`)} className="rounded-full border px-3 py-1 text-xs">Copy invite</button>
+            <button type="button" onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?invite=${a.invite_code}`)} className="min-h-11 rounded-full border px-3 py-1 text-xs">Copy invite</button>
             <button
+              type="button"
               onClick={async () => {
                 try {
                   const management = await issueResourceManagementToken("assessment", a.id);
@@ -348,11 +344,12 @@ function CreatorPanel() {
                   setError(e instanceof Error ? e.message : "Could not create management link");
                 }
               }}
-              className="rounded-full border px-3 py-1 text-xs"
+              className="min-h-11 rounded-full border px-3 py-1 text-xs"
             >
               Copy management link
             </button>
             <button
+              type="button"
               onClick={async () => {
                 if (!window.confirm("Revoke active management links for this assessment?")) return;
                 try {
@@ -367,15 +364,16 @@ function CreatorPanel() {
                   setError(e instanceof Error ? e.message : "Could not revoke management links");
                 }
               }}
-              className="text-xs text-red-600 underline"
+              className="min-h-11 text-xs text-red-600 underline"
             >
               Revoke management links
             </button>
-            <button onClick={() => setOpenId(a.id)} className="rounded-full border px-3 py-1 text-xs font-semibold">Results →</button>
+            <button type="button" onClick={() => setOpenId(a.id)} className="min-h-11 rounded-full border px-3 py-1 text-xs font-semibold">Results →</button>
             {a.revoked ? (
               <span className="text-xs font-bold uppercase text-red-600">revoked</span>
             ) : (
               <button
+                type="button"
                 onClick={async () => {
                   if (!window.confirm("Revoke this invite? Candidates with the link will be told it was revoked.")) return;
                   try {
@@ -386,7 +384,7 @@ function CreatorPanel() {
                     setError(e instanceof Error ? e.message : "Revoke failed");
                   }
                 }}
-                className="text-xs text-red-600 underline"
+                className="min-h-11 text-xs text-red-600 underline"
               >
                 Revoke
               </button>
@@ -411,7 +409,7 @@ function ResultsView({ assessmentId, onBack }: { assessmentId: string; onBack: (
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-3 text-sm underline">← my assessments</button>
+      <button type="button" onClick={onBack} className="mb-3 min-h-11 text-sm underline">← my assessments</button>
       <h2 className="text-xl font-bold">Candidate summaries</h2>
       {loadError && (
         <p role="alert" className="mt-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">

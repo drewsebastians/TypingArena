@@ -7,6 +7,10 @@ import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import { RemoteUnavailableError, fetchLeaderboard, type PublicLeaderboardRow } from "@/lib/remote";
 import { getNickname } from "@/lib/history";
 import { track } from "@/lib/analytics";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import { SafeAdSlot } from "@/components/AdSlot";
+import { getRouteByPath } from "@/lib/routeRegistry";
 
 type ModeFilter = "sprint" | "daily" | "all";
 type LangFilter = "en" | "id" | "all";
@@ -53,17 +57,18 @@ export default function LeaderboardPage() {
   }, [load, mode, language, durationSec]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Leaderboard</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Ranked attempts only — pasted, burst-flagged or practice results never appear. Scores are comparable because every attempt records its scoring version.
-      </p>
+    <ToolPageShell
+      eyebrow="Compete"
+      title="Leaderboard"
+      description="Ranked attempts only — pasted, burst-flagged, or practice results never appear. Every accepted attempt records its scoring version for honest comparisons."
+    >
+      <div className="mx-auto max-w-3xl">
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Select label="Mode" value={mode} onChange={(v) => setMode(v as ModeFilter)} options={[["sprint", "Sprint"], ["daily", "Daily Arena"], ["all", "All modes"]]} />
         <Select label="Language" value={language} onChange={(v) => setLanguage(v as LangFilter)} options={[["all", "All"], ["en", "English"], ["id", "Indonesia"]]} />
         <Select label="Duration" value={String(durationSec)} onChange={(v) => setDuration(Number(v) as DurFilter)} options={[["30", "30s"], ["60", "60s"], ["300", "5 min"], ["0", "Any"]]} />
-        <Link href="/daily-arena" className="ml-auto rounded-full bg-violet-600 px-4 py-1.5 text-sm font-semibold text-white">Daily Arena →</Link>
+        <Link href="/daily-arena" className="ml-auto inline-flex min-h-11 items-center rounded-full bg-violet-600 px-4 py-1.5 text-sm font-semibold text-white">Daily Arena →</Link>
       </div>
 
       <div className="mt-4 rounded-xl border bg-white dark:bg-zinc-900">
@@ -99,7 +104,10 @@ export default function LeaderboardPage() {
       <p className="mt-3 text-xs text-zinc-500">
         Integrity: only server-visible ranked attempts are listed. Heuristic signals (paste/burst/focus) exclude results client-side and are re-checked at submission time.
       </p>
-    </div>
+      <SafeAdSlot slot="leaderboard" context="outside-task" className="mt-8" />
+      {getRouteByPath("/leaderboard") && <RelatedTools route={getRouteByPath("/leaderboard")!} />}
+      </div>
+    </ToolPageShell>
   );
 }
 
@@ -107,7 +115,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="flex items-center gap-1 text-sm">
       <span className="text-xs uppercase tracking-wide text-zinc-500">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="min-h-11 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800">
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>
         ))}

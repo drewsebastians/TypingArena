@@ -93,7 +93,6 @@ export default function CustomPanel() {
   if (!IS_REMOTE_CONFIGURED) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("custom.title")}</h1>
         <p className="mt-3 rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")}</p>
       </div>
     );
@@ -110,25 +109,20 @@ export default function CustomPanel() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">{t("custom.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Your own practice passages with share links. Content is sanitized and length-limited; custom tests are practice-only and never enter global ranked boards.
-      </p>
-
       <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
         <label htmlFor="ct-title" className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">Title</label>
         <input id="ct-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="e.g. Invoice drill" className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
         <div className="mt-2 flex gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Language
-            <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className="ml-2 rounded-lg border px-2 py-1 dark:bg-zinc-800">
+            <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className="ml-2 min-h-11 rounded-lg border px-2 py-1 dark:bg-zinc-800">
               <option value="en">English</option>
               <option value="id">Indonesia</option>
             </select>
           </label>
           <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Visibility
-            <select value={visibility} onChange={(e) => setVisibility(e.target.value as "private" | "unlisted")} className="ml-2 rounded-lg border px-2 py-1 dark:bg-zinc-800">
+            <select value={visibility} onChange={(e) => setVisibility(e.target.value as "private" | "unlisted")} className="ml-2 min-h-11 rounded-lg border px-2 py-1 dark:bg-zinc-800">
               <option value="unlisted">Unlisted link</option>
               <option value="private">Private</option>
             </select>
@@ -138,6 +132,7 @@ export default function CustomPanel() {
         <textarea id="ct-body" value={body} onChange={(e) => setBody(e.target.value.slice(0, 4000))} rows={6} placeholder="Paste or write the practice passage—" className="mt-1 w-full rounded-lg border p-3 font-mono text-sm dark:bg-zinc-800" />
         <div className="mt-3 flex items-center gap-3">
           <button
+            type="button"
             onClick={async () => {
               setError(null);
               try {
@@ -164,7 +159,7 @@ export default function CustomPanel() {
               }
             }}
             disabled={title.trim().length < 2 || body.trim().length < 10}
-            className="rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+            className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
           >
             {t("custom.create")}
           </button>
@@ -185,8 +180,9 @@ export default function CustomPanel() {
           <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
             <span className="flex-1 font-semibold">{sanitizeTitle(m.title)}</span>
             <span className="mr-3 text-xs text-zinc-500">{m.language} · {m.visibility}</span>
-            <button onClick={() => setViewingId(m.id)} className="rounded-full border px-4 py-1.5 text-xs font-semibold">Open →</button>
+            <button type="button" onClick={() => setViewingId(m.id)} className="min-h-11 rounded-full border px-4 py-1.5 text-xs font-semibold">Open →</button>
             <button
+              type="button"
               onClick={async () => {
                 try {
                   const management = await issueResourceManagementToken("custom", m.id);
@@ -198,11 +194,12 @@ export default function CustomPanel() {
                   setError(e instanceof Error ? e.message : "Could not create management link");
                 }
               }}
-              className="rounded-full border px-3 py-1.5 text-xs"
+              className="min-h-11 rounded-full border px-3 py-1.5 text-xs"
             >
               Copy management link
             </button>
             <button
+              type="button"
               onClick={async () => {
                 if (!window.confirm("Revoke active management links for this test?")) return;
                 try {
@@ -217,7 +214,7 @@ export default function CustomPanel() {
                   setError(e instanceof Error ? e.message : "Could not revoke management links");
                 }
               }}
-              className="text-xs text-red-600 underline"
+              className="min-h-11 text-xs text-red-600 underline"
             >
               Revoke links
             </button>
@@ -247,7 +244,7 @@ function TakeCustomTest({ testId, onBack }: { testId: string; onBack: () => void
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
         <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>
-        <button onClick={onBack} className="mt-3 underline text-sm">← back</button>
+        <button type="button" onClick={onBack} className="mt-3 min-h-11 underline text-sm">← back</button>
       </div>
     );
   }
@@ -255,7 +252,7 @@ function TakeCustomTest({ testId, onBack }: { testId: string; onBack: () => void
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-3 text-sm underline">| all custom tests</button>
+      <button type="button" onClick={onBack} className="mb-3 min-h-11 text-sm underline">| all custom tests</button>
       <h1 className="text-2xl font-black">{sanitizeTitle(test.title)}</h1>
       <p className="text-xs uppercase tracking-widest text-zinc-500">Custom practice · {test.language === "en" ? "English" : "Bahasa Indonesia"} · practice-only</p>
 

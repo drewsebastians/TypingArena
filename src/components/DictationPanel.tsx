@@ -33,9 +33,9 @@ export default function DictationPanel({
   return (
     <div className="flex flex-col items-center gap-6">
       {!lockLanguage && (
-        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900">
+        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="dictation language">
           {(["en", "id"] as const).map((l) => (
-            <button key={l} onClick={() => { setLanguage(l); setLastResult(null); }} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={l} onClick={() => { setLanguage(l); setClipIdx(0); setLastResult(null); }} aria-pressed={language === l} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {l === "en" ? "English" : "Bahasa Indonesia"}
             </button>
           ))}

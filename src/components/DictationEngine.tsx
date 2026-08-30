@@ -248,7 +248,7 @@ export default function DictationEngine({
           <div className="mt-2 font-mono text-sm"><span className="text-zinc-500">Reference:</span> {item.transcript}</div>
           <div className="mt-1 font-mono text-sm"><span className="text-zinc-500">You typed:</span> {typed || <em>(empty)</em>}</div>
         </details>
-        <button onClick={() => window.location.reload()} className="mt-4 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">Next clip ↻</button>
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 min-h-11 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">Next clip ↻</button>
       </ResultSection>
     );
   }
@@ -277,6 +277,7 @@ export default function DictationEngine({
           onSeeked={syncPlayback}
         />
         <button
+          type="button"
           onClick={handlePlayPause}
           disabled={audioFailed && process.env.NODE_ENV !== "development"}
           className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow ${playing ? "bg-zinc-300 text-zinc-700" : "bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black"}`}
@@ -284,14 +285,14 @@ export default function DictationEngine({
         >
           {playing ? "⏸ Pause" : "▶ Play"}
         </button>
-        <button onClick={handleReplayFromStart} disabled={!startedAt} className="rounded-full border bg-white px-4 py-2.5 text-xs font-semibold dark:bg-zinc-900 disabled:opacity-40" aria-label="replay audio from start">
+        <button type="button" onClick={handleReplayFromStart} disabled={!startedAt} className="min-h-11 rounded-full border bg-white px-4 py-2.5 text-xs font-semibold dark:bg-zinc-900 disabled:opacity-40" aria-label="replay audio from start">
           ↻ Replay
         </button>
         {audioFailed && (
           <span className="text-xs text-amber-600">
             Static audio failed to load.
             {process.env.NODE_ENV !== "production" ? (
-              <button onClick={devFallbackSpeak} className="ml-1 underline">[dev fallback]</button>
+              <button type="button" onClick={devFallbackSpeak} className="ml-1 min-h-11 underline">[dev fallback]</button>
             ) : (
               " Please reload; if it persists the asset is missing from this deployment."
             )}
@@ -314,8 +315,8 @@ export default function DictationEngine({
         className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-3 font-mono text-base dark:border-zinc-700 dark:bg-zinc-800"
       />
       <div className="mt-3 flex items-center gap-2">
-        <button onClick={handleSubmit} disabled={!typed.trim()} className="rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">Submit</button>
-        <button onClick={() => { setTyped(""); inputRef.current?.focus(); }} className="rounded-full border px-4 py-2 text-sm">Clear</button>
+        <button type="button" onClick={handleSubmit} disabled={!typed.trim()} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">Submit</button>
+        <button type="button" onClick={() => { setTyped(""); inputRef.current?.focus(); }} className="min-h-11 rounded-full border px-4 py-2 text-sm">Clear</button>
         {pasteFlag && <span className="text-xs text-red-600">Paste blocked — attempt will be flagged.</span>}
       </div>
 

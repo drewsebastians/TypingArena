@@ -28,8 +28,8 @@ export default function ConsentBanner() {
         <a href="/privacy" className="underline">Privacy</a> page.
       </p>
       <div className="mt-3 flex gap-2">
-        <button onClick={() => decide("granted")} className="rounded-full bg-black px-5 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-black">Allow</button>
-        <button onClick={() => decide("denied")} className="rounded-full border px-5 py-1.5 text-sm font-medium">No thanks</button>
+        <button type="button" onClick={() => decide("granted")} className="min-h-11 rounded-full bg-black px-5 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-black">Allow</button>
+        <button type="button" onClick={() => decide("denied")} className="min-h-11 rounded-full border px-5 py-1.5 text-sm font-medium">No thanks</button>
       </div>
     </div>
   );

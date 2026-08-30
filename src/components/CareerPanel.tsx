@@ -15,7 +15,8 @@ import TranscriptionEngine from "@/components/TranscriptionEngine";
 import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import { loadCareerHistory, saveCareerResult } from "@/lib/history";
-import { getLocale, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLocale } from "@/components/LocaleProvider";
 import type { CorpusItem, DictationResult, TranscriptionResult, TypingResult } from "@/lib/types";
 
 function pickCorpus(modeRef: string, language: "en" | "id", seedKey: string): CorpusItem {
@@ -28,7 +29,7 @@ function pickCorpus(modeRef: string, language: "en" | "id", seedKey: string): Co
 }
 
 export default function CareerPanel() {
-  const locale = getLocale();
+  const { locale } = useLocale();
   const [active, setActive] = useState<CareerTrack | null>(null);
   const [moduleIdx, setModuleIdx] = useState(0);
   const [scores, setScores] = useState<ModuleScore[]>([]);
@@ -140,9 +141,9 @@ export default function CareerPanel() {
           ))}
         </div>
         <div className="mt-4 flex gap-2">
-          <button onClick={() => start(active)} className="rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">Retake</button>
-          <Link href="/progress" className="rounded-full border px-5 py-2 text-sm">View history</Link>
-          <Link href="/transcription-practice" className="rounded-full border px-5 py-2 text-sm">Keep training →</Link>
+          <button type="button" onClick={() => start(active)} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">Retake</button>
+          <Link href="/progress" className="inline-flex min-h-11 items-center rounded-full border px-5 py-2 text-sm">View history</Link>
+          <Link href="/transcription-practice" className="inline-flex min-h-11 items-center rounded-full border px-5 py-2 text-sm">Keep training →</Link>
         </div>
         <AdSlot slot="career-result" className="mt-8" />
       </div>
@@ -181,9 +182,6 @@ export default function CareerPanel() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-black">{t("career.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{t("career.subtitle")}</p>
-
       {!IS_REMOTE_CONFIGURED && (
         <p className="mt-3 rounded-lg border bg-zinc-50 p-3 text-xs text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")} Local scoring still works fully.</p>
       )}
@@ -198,7 +196,7 @@ export default function CareerPanel() {
                 <li key={i}>• {m.label}</li>
               ))}
             </ul>
-            <button onClick={() => start(track)} className="mt-3 rounded-full bg-black px-5 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-black">
+            <button type="button" onClick={() => start(track)} className="mt-3 min-h-11 rounded-full bg-black px-5 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-black">
               {t("career.startTrack")}
             </button>
           </div>
@@ -220,7 +218,6 @@ export default function CareerPanel() {
           </div>
         </div>
       )}
-      <AdSlot slot="career" className="mt-8" />
     </div>
   );
 }

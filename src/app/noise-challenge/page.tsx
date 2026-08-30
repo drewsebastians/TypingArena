@@ -8,6 +8,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import DictationEngine from "@/components/DictationEngine";
 import { DICTATION_CLIPS } from "@/lib/content/dictation";
 import { track } from "@/lib/analytics";
+import type { DictationResult } from "@/lib/types";
+import { SafeAdSlot } from "@/components/AdSlot";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import NextStepCard from "@/components/tool/NextStepCard";
+import { getRouteByPath } from "@/lib/routeRegistry";
+import { useLocale } from "@/components/LocaleProvider";
 
 const LEVELS = [
   { id: "clean", label: "Clean", desc: "no noise", gain: 0, cutoffHz: 0 },
@@ -19,8 +26,10 @@ const LEVELS = [
 type LevelId = (typeof LEVELS)[number]["id"];
 
 export default function NoiseChallenge() {
+  const { locale } = useLocale();
   const [level, setLevel] = useState<LevelId>("clean");
   const [idx, setIdx] = useState(0);
+  const [result, setResult] = useState<DictationResult | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const srcRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -69,25 +78,27 @@ export default function NoiseChallenge() {
   const handleLevel = (id: LevelId) => {
     stopNoise();
     setLevel(id);
+    setResult(null);
     const cfg = LEVELS.find((l) => l.id === id)!;
     if (cfg.gain > 0) startNoise(cfg.gain, cfg.cutoffHz);
     track("noise_challenge_start", { level: id });
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Noise Challenge</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Train listening under difficult acoustic conditions. Same dictation scoring — plus a noise layer you control. Difficulty tiers are relative training levels, not calibrated field recordings.
-      </p>
+    <ToolPageShell
+      eyebrow={locale === "id" ? "Menyimak" : "Listening practice"}
+      title={locale === "id" ? "Tantangan Bising" : "Noise Challenge"}
+      description={locale === "id" ? "Latih kemampuan menyimak di bawah kondisi akustik yang sulit. Skor dikte tetap sama, dengan lapisan bising yang dapat Anda atur." : "Train listening under difficult acoustic conditions. Dictation scoring stays the same while a controllable noise layer raises the challenge."}
+    >
+      <div className="mx-auto max-w-3xl">
 
       <div className="mt-4 flex flex-wrap gap-2">
         {LEVELS.map((l) => (
-          <button key={l.id} onClick={() => handleLevel(l.id)} className={`rounded-full px-4 py-2 text-sm font-semibold ${level === l.id ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`} aria-pressed={level === l.id}>
+          <button type="button" key={l.id} onClick={() => handleLevel(l.id)} className={`min-h-11 rounded-full px-4 py-2 text-sm font-semibold ${level === l.id ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`} aria-pressed={level === l.id}>
             {l.label} <span className="font-normal opacity-60">· {l.desc}</span>
           </button>
         ))}
-        <button onClick={stopNoise} className="rounded-full border bg-white px-3 py-2 text-xs dark:bg-zinc-900">Stop noise</button>
+        <button type="button" onClick={stopNoise} className="min-h-11 rounded-full border bg-white px-3 py-2 text-xs dark:bg-zinc-900">Stop noise</button>
       </div>
 
       {level !== "clean" && (
@@ -98,12 +109,22 @@ export default function NoiseChallenge() {
 
       <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
         <span>Difficulty order: Clean &lt; Light &lt; Medium &lt; Heavy</span>
-        <button onClick={() => setIdx((i) => i + 1)} className="ml-auto rounded-full border bg-white px-3 py-1.5 dark:bg-zinc-900">↻ New sentence</button>
+        <button type="button" onClick={() => { setResult(null); setIdx((i) => i + 1); }} className="ml-auto min-h-11 rounded-full border bg-white px-3 py-1.5 dark:bg-zinc-900">↻ New sentence</button>
       </div>
 
       <div className="mt-4 flex justify-center">
-        <DictationEngine key={`${item.id}-${idx}-${level}`} item={item} noiseLevel={level} />
+        <DictationEngine key={`${item.id}-${idx}-${level}`} item={item} noiseLevel={level} onComplete={setResult} />
       </div>
-    </div>
+        {result && (
+          <NextStepCard
+            title={locale === "id" ? "Langkah berikutnya" : "What to do next"}
+            body={locale === "id" ? "Bandingkan tingkat bising lain, lalu lanjutkan ke transkripsi untuk latihan audio yang lebih panjang." : "Try another noise level, then step up to a longer transcription sprint."}
+            steps={[{ href: "/transcription-practice", label: locale === "id" ? "Lanjut ke transkripsi" : "Go to transcription" }]}
+          />
+        )}
+        <SafeAdSlot slot="noise-challenge" context="outside-task" className="mt-8" />
+        {getRouteByPath("/noise-challenge") && <RelatedTools route={getRouteByPath("/noise-challenge")!} />}
+      </div>
+    </ToolPageShell>
   );
 }

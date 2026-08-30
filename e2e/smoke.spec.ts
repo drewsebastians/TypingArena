@@ -101,6 +101,13 @@ test.describe("audio modes — static assets", () => {
     expect(src).toMatch(/^\/audio\/dictation\/dict-id-/);
   });
 
+  test("dictation ad boundary disappears while the audio task is active", async ({ page }) => {
+    await page.goto("/dictation/english");
+    await expect(page.locator('[data-ad-slot="dictation-en"]')).toBeVisible();
+    await page.getByRole("button", { name: /play dictation audio/i }).click();
+    await expect(page.locator('[data-ad-slot="dictation-en"]')).toHaveCount(0);
+  });
+
   test("transcription offers multi-clip EN/ID workspace", async ({ page }) => {
     await page.goto("/transcription-practice");
     await expect(page.getByRole("heading", { name: /transcription sprint/i })).toBeVisible();
@@ -109,6 +116,43 @@ test.describe("audio modes — static assets", () => {
     await page.getByRole("button", { name: "Bahasa Indonesia" }).click();
     const src = await page.locator("audio").getAttribute("src");
     expect(src).toMatch(/^\/audio\/transcription\/trans-id-/);
+  });
+});
+
+test.describe("public route contract", () => {
+  const routes = [
+    "/",
+    "/typing-test",
+    "/typing-test/1-minute",
+    "/typing-test/5-minute",
+    "/typing-test/indonesian",
+    "/tes-mengetik",
+    "/data-entry-test",
+    "/punctuation-typing-test",
+    "/dictation",
+    "/dictation/english",
+    "/dictation/indonesian",
+    "/noise-challenge",
+    "/transcription-practice",
+    "/transcription-library",
+    "/career",
+    "/daily-arena",
+    "/leaderboard",
+    "/seasons",
+    "/friends",
+    "/multiplayer",
+    "/teams",
+    "/custom",
+    "/assessments",
+    "/progress",
+    "/privacy",
+  ];
+
+  test("every public route has a visible primary heading", async ({ page }) => {
+    for (const route of routes) {
+      await page.goto(route);
+      await expect(page.locator("main h1").first(), route).toBeVisible();
+    }
   });
 });
 

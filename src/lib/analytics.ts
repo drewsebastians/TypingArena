@@ -51,6 +51,7 @@ export type EventName =
   | "shared_data_deleted"
   | "history_deleted"
   | "history_viewed"
+  | "library_clip_started"
   | "next_recommended_start"
   | "streak_incremented"
   | "daily_arena_start"
