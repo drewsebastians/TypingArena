@@ -83,7 +83,8 @@ export type EventName =
   | "sync_retry_scheduled"
   | "sync_permanent_rejection"
   | "ranked_submission_rejected"
-  | "multiplayer_progress_connected";
+  | "multiplayer_progress_connected"
+  | "explore_all_tools";
 
 const QUEUE_KEY = "ta:analytics_queue";
 let posthogLoading = false;
