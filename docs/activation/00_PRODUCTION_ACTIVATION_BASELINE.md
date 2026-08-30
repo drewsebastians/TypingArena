@@ -71,8 +71,10 @@ that PR #4 has been deployed.
 
 This run did not execute production SQL, supabase db push, Supabase Auth
 changes, GitHub secret/variable writes, analytics/AdSense enablement, PR
-approval/merge, deployment, rollback, or shared-flow writes. No secret values
-were read or written.
+approval/merge, deployment, rollback, or shared-flow writes. No production
+credential values were accessed, logged, or written by this run. Ephemeral
+local-stack values emitted by the CI runner were not copied into repository
+documentation.
 
 ## Required authorization boundary
 

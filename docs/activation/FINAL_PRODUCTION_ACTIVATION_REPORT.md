@@ -82,7 +82,8 @@ Repository evidence is green through migration 0016:
 - anonymous resource capabilities store digests rather than bearer tokens;
 - public board views omit auth user UUIDs;
 - analytics sanitization is scalar-only and consent-gated;
-- no production secrets were read, logged, or written.
+- no production credentials were accessed, logged, or written by this run;
+  ephemeral local-stack test output was not copied into the repository.
 
 Production settings and live shared-flow verification remain external.
 
