@@ -1,6 +1,6 @@
 "use client";
 // Local persistence — anonymous-first history, streaks (product-day aware),
-// XP across all modes, username, and consent state.
+// XP across all modes, nickname, and consent state.
 //
 // Migration note: prototype v1 stored results without versioning fields and
 // used UTC dates for streaks. loadX() functions tolerate missing fields so old
@@ -11,6 +11,7 @@ import type { DictationResult, TranscriptionResult, TypingResult } from "./types
 import type { CareerAssessmentResult } from "./career";
 import { arenaDateString, arenaDaysBetween } from "./datetime";
 import { track } from "./analytics";
+import { getLocalNickname, setLocalNickname } from "./nickname";
 
 const KEYS = {
   typing: "ta:typing_history_v2",
@@ -20,9 +21,8 @@ const KEYS = {
   xp: "ta:xp",
   streak: "ta:streak_v2",
   lastActivityDay: "ta:last_activity_day",
-  username: "ta:username",
+  nickname: "ta:nickname",
   analyticsConsent: "ta:analytics_consent",
-  migratedToAccount: "ta:migrated_to_account",
 };
 
 const MAX_HISTORY = 500;
@@ -88,7 +88,7 @@ export function saveTranscriptionResult(r: TranscriptionResult): void {
 }
 
 // ---------------------------------------------------------------------------
-// Career (account-backed history hydrates cross-device via attempts.metrics)
+// Career (shared history can hydrate through explicit opt-in sync)
 // ---------------------------------------------------------------------------
 
 export function loadCareerHistory(): CareerAssessmentResult[] {
@@ -103,7 +103,7 @@ export function saveCareerResult(r: CareerAssessmentResult): void {
   noteActivity();
 }
 
-/** Every persisted result across modes (used for account migration + export). */
+/** Every persisted result across modes (used for export and explicit sync). */
 export function exportAllResults(): {
   typing: TypingResult[];
   dictation: DictationResult[];
@@ -166,17 +166,12 @@ export function noteActivity(now: number = Date.now()): number | null {
 // Identity & consent
 // ---------------------------------------------------------------------------
 
-export function getUsername(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(KEYS.username);
+export function getNickname(): string | null {
+  return getLocalNickname();
 }
 
-export function setUsername(name: string): void {
-  try {
-    localStorage.setItem(KEYS.username, name.slice(0, 24));
-  } catch {
-    /* ignore */
-  }
+export function setNickname(name: string): void {
+  setLocalNickname(name);
 }
 
 export type ConsentChoice = "granted" | "denied" | null;
@@ -195,21 +190,8 @@ export function setAnalyticsConsent(choice: Exclude<ConsentChoice, null>): void 
   }
 }
 
-export function wasMigratedToAccount(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(KEYS.migratedToAccount) === "1";
-}
-
-export function markMigratedToAccount(): void {
-  try {
-    localStorage.setItem(KEYS.migratedToAccount, "1");
-  } catch {
-    /* ignore */
-  }
-}
-
 /**
- * Delete ALL local product data (history, streak, username). Used by the
+ * Delete ALL local product data (history, streak, nickname). Used by the
  * privacy controls on /progress. Analytics queue intentionally included via
  * clearQueue in analytics module when invoked from the UI.
  */

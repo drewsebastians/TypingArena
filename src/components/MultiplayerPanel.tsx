@@ -18,6 +18,7 @@ import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
   cancelRoom,
   createRoom,
+  ensureSharedIdentity,
   fetchRoom,
   fetchRoomResults,
   finishRoom,
@@ -27,7 +28,7 @@ import {
   type RoomResultRow,
 } from "@/lib/remote";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { getUsername } from "@/lib/history";
+import { getNickname } from "@/lib/history";
 import { sanitizeDisplayName } from "@/lib/sanitize";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
@@ -115,7 +116,7 @@ export default function MultiplayerPanel() {
       .subscribe();
     channelRef.current = ch;
     setTimeout(async () => {
-      await ch.track({ name: sanitizeDisplayName(getUsername() ?? "player") });
+      await ch.track({ name: sanitizeDisplayName(getNickname() ?? "player") });
     }, 300);
   }, []);
 
@@ -131,7 +132,7 @@ export default function MultiplayerPanel() {
     setError(null);
     try {
       const { code, hostToken } = await createRoom({
-        hostName: getUsername() ?? "host",
+      hostName: getNickname() ?? "host",
         language: "en",
         durationSec: 30,
       });
@@ -152,6 +153,7 @@ export default function MultiplayerPanel() {
     async (code: string) => {
       setError(null);
       try {
+        await ensureSharedIdentity(getNickname() ?? undefined);
         const r = await fetchRoom(code);
         setRoom(r);
         setProgress({});
@@ -217,7 +219,7 @@ export default function MultiplayerPanel() {
       if (!room) return;
       try {
         await finishRoom(room.code, playerKey(), {
-          displayName: getUsername() ?? "player",
+      displayName: getNickname() ?? "player",
           typedChars: r.typedChars,
           correctChars: r.correctChars,
           elapsedMs: r.elapsedMs,
@@ -238,7 +240,7 @@ export default function MultiplayerPanel() {
       channelRef.current?.send({
         type: "broadcast",
         event: "progress",
-        payload: { key: playerKey(), name: sanitizeDisplayName(getUsername() ?? "player"), ...p },
+      payload: { key: playerKey(), name: sanitizeDisplayName(getNickname() ?? "player"), ...p },
       });
     },
     [],

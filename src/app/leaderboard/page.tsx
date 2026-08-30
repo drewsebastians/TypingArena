@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import { RemoteUnavailableError, fetchLeaderboard, type PublicLeaderboardRow } from "@/lib/remote";
-import { getUsername } from "@/lib/history";
+import { getNickname } from "@/lib/history";
 import { track } from "@/lib/analytics";
 
 type ModeFilter = "sprint" | "daily" | "all";
@@ -22,7 +22,7 @@ export default function LeaderboardPage() {
   const [localName, setLocalName] = useState<string | null>(null);
 
   useEffect(() => {
-    setLocalName(getUsername());
+    setLocalName(getNickname());
   }, []);
 
   const load = useCallback(async () => {
@@ -78,7 +78,7 @@ export default function LeaderboardPage() {
         {state === "error" && <p className="p-6 text-center text-sm text-red-600">Could not load leaderboard: {error}</p>}
         {state === "ready" && rows.length === 0 && (
           <p className="py-10 text-center text-sm text-zinc-500">
-            No ranked entries for this filter yet. Complete a clean sprint and sign in to claim the top spot.
+            No ranked entries for this filter yet. Complete a clean sprint to claim the top spot.
           </p>
         )}
         {rows.length > 0 && (

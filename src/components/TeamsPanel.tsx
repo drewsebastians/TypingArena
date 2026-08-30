@@ -2,9 +2,8 @@
 // Teams & Classrooms — create/join rooms, publish REAL assignments, aggregate
 // dashboard. Assignments launch the actual TypingArena engines and completions
 // are bound server-side to real attempt evidence (never an arbitrary score).
-// Member emails never surface; display names/usernames only.
+// Contact details never surface; display names/usernames only.
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import {
   completeAssignment,
   createAssignment,
@@ -14,8 +13,10 @@ import {
   fetchMyTeams,
   fetchTeamCompletions,
   fetchTeamMembers,
+  issueResourceManagementToken,
   joinTeamByCode,
   leaveTeam,
+  revokeResourceManagementToken,
   submitAttempt,
   type AssignmentRecord,
   type AssignmentDefinition,
@@ -38,6 +39,8 @@ import { DICTATION_CLIPS, TRANSCRIPTION_CLIPS, findDictationClip } from "@/lib/c
 import { CAREER_TRACKS, audioEfficiency, scoreModules, typingEfficiency, getTrack } from "@/lib/career";
 import type { CareerAssessmentResult, CareerModule, ModuleScore } from "@/lib/career";
 import type { CorpusItem, DictationResult, Language, TranscriptionResult, TypingResult } from "@/lib/types";
+import { parseManageFragment } from "@/lib/resourceAccess";
+import { recoverResourceManagement } from "@/lib/remote";
 
 /** Single-exercise kinds plus full career tracks — all executable end-to-end. */
 const ASSIGNMENT_KINDS = ["sprint", "copy-pro", "numbers", "punctuation", "dictation", "transcription", "career"] as const;
@@ -52,11 +55,12 @@ function corpusFor(language: Language): CorpusItem[] {
 
 export default function TeamsPanel() {
   const [teams, setTeams] = useState<Array<TeamRecord & { role: string }>>([]);
-  const [state, setState] = useState<"loading" | "ready" | "unconfigured" | "signed-out">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "unconfigured">("loading");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [managementLinks, setManagementLinks] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!IS_REMOTE_CONFIGURED) {
@@ -74,12 +78,25 @@ export default function TeamsPanel() {
   }, []);
 
   useEffect(() => {
-    void import("@/lib/remote").then(({ getCurrentUser }) =>
-      getCurrentUser().then((u) => {
-        if (!u && IS_REMOTE_CONFIGURED) setState("signed-out");
-      }),
-    );
-    void refresh();
+    const manageId = new URLSearchParams(window.location.search).get("manage");
+    const token = parseManageFragment(window.location.hash);
+    if (manageId && token) {
+      setState("ready");
+      setError("Recovering workspace…");
+      void recoverResourceManagement("team", manageId, token)
+        .then(() => {
+          track("manage_link_recovered", { resourceType: "team" });
+          window.history.replaceState({}, "", window.location.pathname);
+          setError(null);
+          void refresh();
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : "Management link is invalid or expired");
+          setState("ready");
+        });
+    } else {
+      void refresh();
+    }
   }, [refresh]);
 
   if (state === "unconfigured") {
@@ -99,14 +116,8 @@ export default function TeamsPanel() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="text-2xl font-black">{t("teams.title")}</h1>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        For workplace teams, study groups and classrooms. Only public usernames are visible — never emails. Members see their own detailed results; admins see aggregates.
+        For workplace teams, study groups and classrooms. Only public usernames are visible — never contact details. Members see their own detailed results; admins see aggregates.
       </p>
-
-      {state === "signed-out" && (
-        <p className="mt-3 text-sm text-zinc-500">
-          <Link href="/progress" className="underline">{t("common.signInFirst")}</Link>
-        </p>
-      )}
 
       {state === "ready" && (
         <>
@@ -118,10 +129,13 @@ export default function TeamsPanel() {
             <button
               onClick={async () => {
                 try {
-                  await createTeam(sanitizeTitle(name));
+                  const created = await createTeam(sanitizeTitle(name));
+                  const management = await issueResourceManagementToken("team", created.id);
+                  setManagementLinks((prev) => ({ ...prev, [created.id]: `${window.location.origin}${window.location.pathname}?manage=${created.id}#manage=${management.token}` }));
                   setName("");
                   await refresh();
                   track("team_created", {});
+                  track("manage_link_created", { resourceType: "team" });
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "Create failed");
                 }
@@ -162,11 +176,47 @@ export default function TeamsPanel() {
                 <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-800">{tm.join_code}</span>
                 <span className={`text-xs font-bold uppercase ${tm.role === "owner" ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-500"}`}>{tm.role}</span>
                 <button onClick={() => setActiveId(tm.id)} className="rounded-full border px-4 py-1.5 text-xs font-semibold">Open room →</button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const management = await issueResourceManagementToken("team", tm.id);
+                      const link = `${window.location.origin}${window.location.pathname}?manage=${tm.id}#manage=${management.token}`;
+                      setManagementLinks((prev) => ({ ...prev, [tm.id]: link }));
+                      await navigator.clipboard.writeText(link);
+                      track("manage_link_created", { resourceType: "team" });
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not create management link");
+                    }
+                  }}
+                  className="rounded-full border px-3 py-1.5 text-xs"
+                >
+                  Copy management link
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!window.confirm("Revoke active management links for this team?")) return;
+                    try {
+                      await revokeResourceManagementToken("team", tm.id);
+                      setManagementLinks((prev) => {
+                        const next = { ...prev };
+                        delete next[tm.id];
+                        return next;
+                      });
+                      track("manage_link_revoked", { resourceType: "team" });
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not revoke management links");
+                    }
+                  }}
+                  className="text-xs text-red-600 underline"
+                >
+                  Revoke links
+                </button>
                 {tm.role === "owner" ? (
                   <button onClick={async () => { if (!window.confirm(`Delete team "${tm.name}" and all its assignments?`)) return; await deleteTeamAsOwner(tm.id); await refresh(); }} className="text-xs text-red-600 underline">Delete</button>
                 ) : (
                   <button onClick={async () => { await leaveTeam(tm.id); await refresh(); }} className="text-xs text-red-600 underline">Leave</button>
-                )}
+              )}
+              {managementLinks[tm.id] && <p className="w-full break-all rounded bg-amber-50 p-2 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLinks[tm.id]}</p>}
               </div>
             ))}
           </div>

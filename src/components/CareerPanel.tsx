@@ -14,7 +14,6 @@ import DictationEngine from "@/components/DictationEngine";
 import TranscriptionEngine from "@/components/TranscriptionEngine";
 import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
-import { queueAttempt } from "@/lib/sync";
 import { loadCareerHistory, saveCareerResult } from "@/lib/history";
 import { getLocale, t } from "@/lib/i18n";
 import type { CorpusItem, DictationResult, TranscriptionResult, TypingResult } from "@/lib/types";
@@ -48,24 +47,6 @@ export default function CareerPanel() {
       const res = scoreModules(track, all);
       setResult(res);
       saveCareerResult(res);
-      void queueAttempt({
-        clientId: `career-${track.id}-${res.completedAt}`,
-        exerciseId: `career:${track.id}`,
-        exerciseVersion: "v3",
-        scoringVersion: "v2.0.0",
-        mode: "career",
-        language: "en",
-        durationSec: Math.max(30, track.modules.reduce((s, m) => s + m.durationSec, 0)),
-        elapsedMs: Math.max(30000, track.modules.reduce((s, m) => s + m.durationSec, 0) * 1000),
-        typedChars: Math.max(20, all.reduce((s, m) => s + Math.round((m.speedWpm * 5 * 30) / 60), 0)),
-        correctChars: Math.max(10, all.reduce((s, m) => s + Math.round(((m.speedWpm * 5 * 30) / 60) * (m.accuracy / 100)), 0)),
-        uncorrectedErrors: 0,
-        pasteFlag: false,
-        claimedWpm: Math.round(all.reduce((s, m) => s + m.speedWpm, 0) / Math.max(1, all.length)),
-        claimedAccuracy: Math.round(all.reduce((s, m) => s + m.accuracy, 0) / Math.max(1, all.length)),
-        integrity: all.some((m) => m.integrityFlags.length > 0) ? "flagged" : "ranked",
-        metrics: { kind: "career", assessment: res as unknown as Record<string, unknown> },
-      });
     },
     [],
   );
@@ -133,8 +114,8 @@ export default function CareerPanel() {
     [active, moduleIdx, scores, finish],
   );
 
-  // Loaded in an effect so cross-device hydration (sign-in on /progress)
-  // and local saves both stay consistent with the shared history store.
+  // Loaded in an effect so local saves and explicit shared hydration both stay
+  // consistent with the history store.
   const [currentHistory, setCurrentHistory] = useState<CareerAssessmentResult[]>([]);
   useEffect(() => {
     setCurrentHistory(loadCareerHistory());

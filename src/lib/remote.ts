@@ -13,6 +13,8 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { IS_REMOTE_CONFIGURED, SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
+import { getLocale } from "./i18n";
+import { sanitizeNickname } from "./nickname";
 import type { IntegrityState, Language, Mode } from "./types";
 
 export class RemoteUnavailableError extends Error {
@@ -170,15 +172,15 @@ export interface SubmitResponse {
  *  integrity/ranked itself; the client's claim is advisory only. */
 export async function submitAttempt(p: SubmitAttemptPayload): Promise<SubmitResponse> {
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in to save attempts to the shared arena");
+  await ensureSharedIdentity();
   const { data, error } = await c.rpc("submit_attempt", { p: p as unknown as Record<string, unknown> });
   if (error) throw new Error(`Attempt rejected: ${error.message}`);
   return (data ?? {}) as SubmitResponse;
 }
 
-/** Fetch the signed-in user's complete attempt history (any integrity),
- *  newest first, auto-paginated. Used for cross-device hydration. */
+/** Fetch the current anonymous shared session's complete attempt history (any
+ *  integrity), newest first, auto-paginated. Kept for explicit internal
+ *  hydration; ordinary practice never calls it. */
 export async function fetchMyAttempts(pageSize = 200): Promise<Array<Record<string, unknown>>> {
   const c = getClient();
   const all: Array<Record<string, unknown>> = [];
@@ -198,16 +200,6 @@ export async function fetchMyAttempts(pageSize = 200): Promise<Array<Record<stri
   return all;
 }
 
-/** Complete account deletion: product data AND the auth user itself. */
-export async function deleteMyAccount(): Promise<void> {
-  const c = getClient();
-  const { data } = await c.auth.getUser();
-  if (!data.user) throw new Error("Not signed in");
-  const { error } = await c.rpc("delete_my_account");
-  if (error) throw new Error(error.message);
-  await signOutUser();
-}
-
 // ---------------------------------------------------------------------------
 // Friend challenges
 // ---------------------------------------------------------------------------
@@ -216,11 +208,14 @@ export async function createFriendChallenge(p: {
   creatorName: string;
   payload: FriendChallengeRecord["payload"];
 }): Promise<string> {
+  const identity = await ensureSharedIdentity(p.creatorName);
+  const displayName = identity.username || sanitizeNickname(p.creatorName) || "typer";
   const id = generateChallengeId();
   const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString();
   const { error } = await getClient().from("friend_challenges").insert({
     id,
-    creator_name: p.creatorName.slice(0, 24),
+    creator_id: identity.id,
+    creator_name: displayName,
     challenge_version: p.payload.createdAt ? "v2" : "v2",
     payload: p.payload,
     expires_at: expiresAt,
@@ -249,10 +244,12 @@ export async function submitFriendResult(
   challengeId: string,
   p: { displayName: string; wpm: number; accuracy: number; typedChars?: number; correctChars?: number; elapsedMs?: number },
 ): Promise<void> {
+  const identity = await ensureSharedIdentity(p.displayName);
+  const displayName = identity.username || sanitizeNickname(p.displayName) || "guest";
   const { error } = await getClient().rpc("submit_friend_result", {
     p_challenge_id: challengeId.trim().toUpperCase(),
     p: {
-      display_name: p.displayName.slice(0, 24),
+      display_name: displayName,
       ...(p.typedChars !== undefined && p.correctChars !== undefined && p.elapsedMs !== undefined
         ? { typed_chars: Math.round(p.typedChars), correct_chars: Math.round(p.correctChars), elapsed_ms: Math.round(p.elapsedMs) }
         : { claimed_wpm: p.wpm, claimed_accuracy: p.accuracy }),
@@ -291,24 +288,15 @@ function generateChallengeId(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Auth (optional accounts — anonymous-first product)
+// Shared identity (anonymous-first product)
 // ---------------------------------------------------------------------------
-
-export async function signInWithEmail(email: string): Promise<void> {
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await getClient().auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
-  if (error) throw new Error(error.message);
-}
-
-export async function signOutUser(): Promise<void> {
-  const { error } = await getClient().auth.signOut();
-  if (error) throw new Error(error.message);
-}
 
 export interface AccountUser {
   id: string;
-  email: string | null;
+  /** Intentionally always null — email is not a product identity. */
+  email: null;
   username: string | null;
+  isAnonymous: boolean;
 }
 
 export async function getCurrentUser(): Promise<AccountUser | null> {
@@ -317,7 +305,78 @@ export async function getCurrentUser(): Promise<AccountUser | null> {
   const { data } = await c.auth.getUser();
   if (!data.user) return null;
   const { data: profile } = await c.from("profiles").select("username").eq("id", data.user.id).maybeSingle();
-  return { id: data.user.id, email: data.user.email ?? null, username: (profile as { username: string } | null)?.username ?? null };
+  const authUser = data.user as typeof data.user & { is_anonymous?: boolean };
+  return {
+    id: data.user.id,
+    email: null,
+    username: (profile as { username: string | null } | null)?.username ?? null,
+    isAnonymous: authUser.is_anonymous !== false,
+  };
+}
+
+let sharedIdentityPromise: Promise<AccountUser> | null = null;
+
+/**
+ * Lazily establish the authenticated Supabase identity needed by a shared
+ * action. Visiting the app and ordinary practice never calls this function.
+ * Concurrent callers share one anonymous bootstrap request so a double-click
+ * cannot create two browser identities.
+ */
+export async function ensureSharedIdentity(nickname?: string): Promise<AccountUser> {
+  if (!IS_REMOTE_CONFIGURED) throw new RemoteUnavailableError();
+  if (typeof window === "undefined") throw new Error("Shared identity is browser-only");
+  if (sharedIdentityPromise) return sharedIdentityPromise;
+
+  const requestedNickname = nickname === undefined ? null : sanitizeNickname(nickname);
+  if (nickname !== undefined && !requestedNickname) {
+    throw new Error("Nickname must be 2–24 letters, numbers, spaces, or simple punctuation");
+  }
+
+  sharedIdentityPromise = (async () => {
+    const c = getClient();
+    const { data: sessionData, error: sessionError } = await c.auth.getSession();
+    if (sessionError) throw new Error(sessionError.message);
+
+    let authUser = sessionData.session?.user ?? null;
+    let created = false;
+    if (!authUser) {
+      const { data, error } = await c.auth.signInAnonymously();
+      if (error || !data.user) throw new Error(error?.message ?? "Could not start a shared session");
+      authUser = data.user;
+      created = true;
+    }
+
+    const { data: profile, error: profileError } = await c.rpc("ensure_shared_profile", {
+      p_username: requestedNickname,
+      p_locale: getLocale(),
+    });
+    if (profileError) {
+      const message = profileError.message.includes("nickname_taken")
+        ? "That nickname is already in use — choose another one"
+        : profileError.message;
+      throw new Error(message);
+    }
+    if (created) trackAnonymousIdentityCreated();
+    const profileRow = (profile ?? {}) as { username?: string | null };
+    return {
+      id: authUser!.id,
+      email: null,
+      username: profileRow.username ?? null,
+      isAnonymous: true,
+    };
+  })();
+
+  try {
+    return await sharedIdentityPromise;
+  } finally {
+    sharedIdentityPromise = null;
+  }
+}
+
+function trackAnonymousIdentityCreated(): void {
+  // Kept in a helper so the event payload can never accidentally grow a
+  // session token, auth UUID, or other identity-bearing value.
+  void import("./analytics").then(({ track }) => track("anonymous_identity_created", {}));
 }
 
 export function onAuthChange(cb: (user: AccountUser | null) => void): () => void {
@@ -330,58 +389,93 @@ export function onAuthChange(cb: (user: AccountUser | null) => void): () => void
   return () => sub.data.subscription.unsubscribe();
 }
 
-export async function updateUsername(username: string): Promise<void> {
-  const c = getClient();
-  const { data } = await c.auth.getUser();
-  if (!data.user) throw new Error("Not signed in");
-  const { error } = await c
-    .from("profiles")
-    .upsert({ id: data.user.id, username: username.slice(0, 24) }, { onConflict: "id" });
-  if (error) throw new Error(error.message);
+export async function updateNickname(nickname: string): Promise<AccountUser> {
+  return ensureSharedIdentity(nickname);
 }
 
-/** Push local anonymous history to the signed-in account (one-shot migration).
- *  Runs through the controlled SECURITY DEFINER RPC: the server recomputes
- *  metrics, forces imported rows to practice/flagged (never ranked), and
- *  dedupes idempotently on (user_id, client_id). Direct client inserts into
- *  attempts are no longer possible by design. */
-export async function migrateLocalHistory(
-  items: Array<SubmitAttemptPayload>,
-): Promise<{ migrated: number }> {
+export async function deleteSharedData(): Promise<void> {
   const c = getClient();
-  const { data } = await c.auth.getUser();
-  if (!data.user) throw new Error("Not signed in");
-  let migrated = 0;
-  for (let i = 0; i < items.length; i += 200) {
-    const chunk = items.slice(i, i + 200).map((p) => ({
-      client_id: p.clientId,
-      exercise_id: p.exerciseId,
-      exercise_version: p.exerciseVersion,
-      scoring_version: p.scoringVersion,
-      normalization_version: p.normalizationVersion ?? null,
-      mode: p.mode,
-      language: p.language,
-      duration_sec: p.durationSec,
-      elapsed_ms: Math.round(p.elapsedMs),
-      typed_chars: Math.max(0, Math.min(20000, p.typedChars ?? 0)),
-      correct_chars: Math.max(0, Math.min(20000, p.correctChars ?? 0)),
-      uncorrected_errors: Math.max(0, p.uncorrectedErrors ?? 0),
-      paste_flag: p.pasteFlag ?? false,
-      burst_flag: p.burstFlag ?? false,
-      metrics: (p.metrics ?? {}) as Record<string, unknown>,
-    }));
-    const { data: inserted, error } = await c.rpc("migrate_local_history", {
-      p_items: chunk,
-    });
-    if (error) {
-      const msg = error.message.includes("rate_limited")
-        ? "Import rate limit reached — try again later"
-        : error.message;
-      throw new Error(`Migration failed after ${migrated} items: ${msg}`);
-    }
-    migrated += typeof inserted === "number" ? inserted : 0;
-  }
-  return { migrated };
+  const current = await getCurrentUser();
+  if (!current) return;
+  const { error } = await c.rpc("delete_my_shared_data");
+  if (error) throw new Error(error.message);
+  await c.auth.signOut();
+}
+
+export interface ResourceManagementToken {
+  resourceType: "team" | "custom" | "assessment";
+  resourceId: string;
+  token: string;
+  expiresAt: string | null;
+}
+
+export async function issueResourceManagementToken(
+  resourceType: ResourceManagementToken["resourceType"],
+  resourceId: string,
+): Promise<ResourceManagementToken> {
+  await ensureSharedIdentity();
+  const { data, error } = await getClient().rpc("issue_resource_management_token", {
+    p_resource_type: resourceType,
+    p_resource_id: resourceId,
+  });
+  if (error) throw new Error(mapManagementError(error.message));
+  const row = (data ?? {}) as { resource_type?: string; resource_id?: string; token?: string; expires_at?: string | null };
+  if (!row.token || !row.resource_id) throw new Error("Management link could not be created");
+  return { resourceType: resourceType, resourceId: row.resource_id, token: row.token, expiresAt: row.expires_at ?? null };
+}
+
+export async function validateResourceManagementToken(
+  resourceType: ResourceManagementToken["resourceType"],
+  resourceId: string,
+  token: string,
+): Promise<{ resourceType: string; resourceId: string; ownerId: string; expiresAt: string }> {
+  await ensureSharedIdentity();
+  const { data, error } = await getClient().rpc("validate_resource_management_token", {
+    p_resource_type: resourceType,
+    p_resource_id: resourceId,
+    p_token: token,
+  });
+  if (error) throw new Error(mapManagementError(error.message));
+  const row = (data ?? {}) as { resource_type?: string; resource_id?: string; owner_id?: string; expires_at?: string };
+  if (!row.resource_id || !row.owner_id || !row.expires_at) throw new Error("Management link is invalid or expired");
+  return { resourceType: String(row.resource_type), resourceId: row.resource_id, ownerId: row.owner_id, expiresAt: row.expires_at };
+}
+
+export async function recoverResourceManagement(
+  resourceType: ResourceManagementToken["resourceType"],
+  resourceId: string,
+  token: string,
+): Promise<{ resourceType: string; resourceId: string; ownerId: string }> {
+  await ensureSharedIdentity();
+  const { data, error } = await getClient().rpc("recover_resource_management", {
+    p_resource_type: resourceType,
+    p_resource_id: resourceId,
+    p_token: token,
+  });
+  if (error) throw new Error(mapManagementError(error.message));
+  const row = (data ?? {}) as { resource_type?: string; resource_id?: string; owner_id?: string };
+  if (!row.resource_id || !row.owner_id) throw new Error("Management link is invalid or expired");
+  return { resourceType: String(row.resource_type), resourceId: row.resource_id, ownerId: row.owner_id };
+}
+
+export async function revokeResourceManagementToken(
+  resourceType: ResourceManagementToken["resourceType"],
+  resourceId: string,
+): Promise<void> {
+  await ensureSharedIdentity();
+  const { error } = await getClient().rpc("revoke_resource_management_token", {
+    p_resource_type: resourceType,
+    p_resource_id: resourceId,
+  });
+  if (error) throw new Error(mapManagementError(error.message));
+}
+
+function mapManagementError(message: string): string {
+  if (message.includes("rate_limited")) return "Too many management-link requests — try again later";
+  if (message.includes("nickname_taken")) return "That nickname is already in use — choose another one";
+  if (message.includes("not_found_or_not_owner")) return "This resource is no longer managed by this device";
+  if (message.includes("management_invalid")) return "Management link is invalid or expired";
+  return message;
 }
 
 // ---------------------------------------------------------------------------
@@ -397,8 +491,7 @@ export interface TeamRecord {
 
 export async function createTeam(name: string): Promise<TeamRecord> {
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in first");
+  await ensureSharedIdentity();
   // Atomic SECURITY DEFINER RPC: creates the team AND its owner membership.
   // Direct client inserts into teams/team_members are no longer permitted —
   // membership exists only through authorized paths (create/join-by-code).
@@ -413,6 +506,7 @@ export async function createTeam(name: string): Promise<TeamRecord> {
 }
 
 export async function joinTeamByCode(code: string): Promise<string> {
+  await ensureSharedIdentity();
   const { data, error } = await getClient().rpc("join_team", { p_code: code.trim().toUpperCase() });
   if (error) {
     const msg = error.message.includes("team_not_found")
@@ -426,6 +520,11 @@ export async function joinTeamByCode(code: string): Promise<string> {
 }
 
 export async function fetchMyTeams(): Promise<Array<TeamRecord & { role: string }>> {
+  // Read-only route hydration must not create an anonymous identity. A
+  // session created by an explicit shared action is still read here when it
+  // exists.
+  const identity = await getCurrentUser();
+  if (!identity) return [];
   const c = getClient();
   const memberships = await c.from("team_members").select("team_id,role");
   if (memberships.error) throw new Error(memberships.error.message);
@@ -439,6 +538,7 @@ export async function fetchMyTeams(): Promise<Array<TeamRecord & { role: string 
 }
 
 export async function leaveTeam(teamId: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().from("team_members").delete().eq("team_id", teamId);
   if (error) throw new Error(error.message);
 }
@@ -467,6 +567,7 @@ export async function fetchTeamMembers(teamId: string): Promise<TeamMemberRow[]>
 }
 
 export async function deleteTeamAsOwner(teamId: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().from("teams").delete().eq("id", teamId);
   if (error) throw new Error(error.message);
 }
@@ -492,15 +593,14 @@ export async function createAssignment(
   p: { title: string; kind: string; definition?: AssignmentDefinition; dueAt?: string },
 ): Promise<void> {
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in first");
+  const identity = await ensureSharedIdentity();
   const { error } = await c.from("assignments").insert({
     team_id: teamId,
     title: p.title.slice(0, 80),
     kind: p.kind,
     payload: (p.definition ?? {}) as Record<string, unknown>,
     due_at: p.dueAt ?? null,
-    created_by: userData.user.id,
+    created_by: identity.id,
   });
   if (error) throw new Error(error.message);
 }
@@ -524,8 +624,7 @@ export async function fetchAssignments(teamId: string): Promise<AssignmentRecord
  */
 export async function completeAssignment(assignmentId: string, attemptClientId: string): Promise<{ score: number; wpm: number; accuracy: number }> {
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in first");
+  await ensureSharedIdentity();
   const { data, error } = await c.rpc("complete_assignment", {
     p_assignment_id: assignmentId,
     p_client_id: attemptClientId,
@@ -591,8 +690,9 @@ export interface CustomTestRecord {
 }
 
 export async function createCustomTest(p: { title: string; language: Language; body: string; visibility: "private" | "unlisted" }): Promise<string> {
+  await ensureSharedIdentity();
   const { data, error } = await getClient().rpc("create_custom_test", { p: p as unknown as Record<string, unknown> });
-  if (error) throw new Error(error.message.includes("sign_in") ? "Sign in to create custom tests" : error.message);
+  if (error) throw new Error(error.message.includes("sign_in") ? "Could not start the shared workspace" : error.message);
   return String(data);
 }
 
@@ -607,20 +707,20 @@ export async function fetchCustomTest(id: string): Promise<CustomTestRecord> {
 }
 
 export async function fetchMyCustomTests(): Promise<CustomTestRecord[]> {
+  const identity = await getCurrentUser();
+  if (!identity) return [];
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in first");
   // Ownership must be enforced here as well as in RLS: the unlisted
   // world-read policy means a bare select also returns OTHER users' unlisted
   // tests, which would pollute the "my tests" surface.
   const { data, error } = await c
     .from("custom_tests")
     .select("id,owner_id,title,language,body,visibility")
-    .eq("owner_id", userData.user.id)
+    .eq("owner_id", identity.id)
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as CustomTestRecord[]).filter((r) => r.owner_id === userData.user!.id);
+  return ((data ?? []) as CustomTestRecord[]).filter((r) => r.owner_id === identity.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -645,6 +745,7 @@ export interface CreatedRoom {
 }
 
 export async function createRoom(p: { hostName: string; language: Language; durationSec: number }): Promise<CreatedRoom> {
+  await ensureSharedIdentity(p.hostName);
   const { data, error } = await getClient().rpc("create_room", {
     p: { host_name: p.hostName, language: p.language, duration_sec: p.durationSec },
   });
@@ -662,6 +763,7 @@ export async function fetchRoom(code: string): Promise<RoomRecord> {
 
 /** Host-authoritative start: only the creator's secret token is accepted. */
 export async function startRoom(code: string, hostToken: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().rpc("start_room", { p_code: code.toUpperCase(), p_host_token: hostToken });
   if (error) {
     const msg = error.message.includes("already_started")
@@ -677,6 +779,7 @@ export async function startRoom(code: string, hostToken: string): Promise<void> 
 
 /** Host-only rematch: same room code, fresh seed, cleared results. */
 export async function restartRoom(code: string, hostToken: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().rpc("restart_room", { p_code: code.toUpperCase(), p_host_token: hostToken });
   if (error) {
     const msg = error.message.includes("not_host") ? "Only the host can restart the race" : error.message;
@@ -687,6 +790,7 @@ export async function restartRoom(code: string, hostToken: string): Promise<void
 /** Host-only cancellation: ends a stale/abandoned race so no further finishes
  *  can be recorded. Idempotent once cancelled. */
 export async function cancelRoom(code: string, hostToken: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().rpc("close_room", { p_code: code.toUpperCase(), p_host_token: hostToken });
   if (error) {
     const msg = error.message.includes("not_host") ? "Only the host can end the race" : error.message;
@@ -706,6 +810,7 @@ export async function finishRoom(
     elapsedMs: number;
   },
 ): Promise<{ accepted: boolean; duplicate?: boolean; wpm?: number; accuracy?: number }> {
+  await ensureSharedIdentity(p.displayName);
   const { data, error } = await getClient().rpc("finish_room", {
     p_code: code.toUpperCase(),
     p_player_key: playerKey,
@@ -762,11 +867,10 @@ export interface AssessmentRecord {
 
 export async function createAssessment(p: { title: string; modules: AssessmentRecord["modules"]; windowHours?: number }): Promise<AssessmentRecord> {
   const c = getClient();
-  const { data: userData } = await c.auth.getUser();
-  if (!userData.user) throw new Error("Sign in first");
+  const identity = await ensureSharedIdentity();
   const { data, error } = await c
     .from("assessments")
-    .insert({ owner_id: userData.user.id, title: p.title.slice(0, 80), modules: p.modules, window_hours: p.windowHours ?? 72 })
+    .insert({ owner_id: identity.id, title: p.title.slice(0, 80), modules: p.modules, window_hours: p.windowHours ?? 72 })
     .select("id,title,modules,invite_code,window_hours")
     .single();
   if (error) throw new Error(error.message);
@@ -823,11 +927,14 @@ export async function fetchAssessmentDefinition(inviteCode: string): Promise<{
 /** Owner-only invite revocation — candidates then receive a distinct
  *  "revoked" state instead of being able to keep completing. */
 export async function revokeAssessmentInvite(assessmentId: string): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().rpc("revoke_assessment_invite", { p_assessment_id: assessmentId });
   if (error) throw new Error(error.message.includes("not_found_or_not_owner") ? "Assessment not found" : error.message);
 }
 
 export async function fetchMyAssessments(): Promise<AssessmentRecord[]> {
+  const identity = await getCurrentUser();
+  if (!identity) return [];
   const { data, error } = await getClient()
     .from("assessments")
     .select("id,title,modules,invite_code,window_hours,revoked,opens_at")
@@ -838,6 +945,8 @@ export async function fetchMyAssessments(): Promise<AssessmentRecord[]> {
 }
 
 export async function fetchAssessmentResults(assessmentId: string): Promise<Array<{ candidate_key: string; label: string; results: Record<string, unknown>; integrity_flags: string[]; completed_at: string }>> {
+  const identity = await getCurrentUser();
+  if (!identity) return [];
   const { data, error } = await getClient()
     .from("assessment_results")
     .select("candidate_key,label,results,integrity_flags,completed_at")
@@ -849,6 +958,7 @@ export async function fetchAssessmentResults(assessmentId: string): Promise<Arra
 }
 
 export async function submitAssessmentResult(p: { inviteCode: string; candidateKey: string; label?: string; results: Record<string, unknown>; flags?: string[] }): Promise<void> {
+  await ensureSharedIdentity();
   const { error } = await getClient().rpc("submit_assessment_result", {
     p: { invite_code: p.inviteCode, candidate_key: p.candidateKey, label: p.label ?? "candidate", results: p.results, flags: p.flags ?? [] },
   });

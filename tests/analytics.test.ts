@@ -70,7 +70,7 @@ describe("analytics adapter", () => {
     const analytics = await loadFresh();
     const { setAnalyticsConsent } = await import("@/lib/history");
     setAnalyticsConsent("granted");
-    analytics.track("account_login", { stage: "otp-sent" });
+    analytics.track("task_started", { mode: "typing" });
     const w = window as unknown as { dataLayer?: unknown[][]; gtag?: (...args: unknown[]) => void };
     expect(w.gtag).toBeTypeOf("function");
     const flat = JSON.stringify(w.dataLayer);

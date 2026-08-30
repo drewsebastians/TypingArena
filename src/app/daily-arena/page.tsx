@@ -2,7 +2,7 @@
 // Daily Arena — one deterministic challenge per product-day (Asia/Jakarta).
 //
 // Shared board comes from the central backend when configured and the user is
-// signed in. Without a backend the page degrades HONESTLY: your attempt is
+// anonymously authenticated when publishing. Without a backend the page degrades HONESTLY: your attempt is
 // still scored and kept locally, and the board area explains what is missing.
 // No fake competitor rows are ever shown.
 
@@ -16,7 +16,6 @@ import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
   fetchDailyBoard,
-  getCurrentUser,
   submitAttempt,
   type DailyBoardRow,
 } from "@/lib/remote";
@@ -30,7 +29,7 @@ export default function DailyArena() {
   const [iso, setIso] = useState<string | null>(null);
   const [result, setResult] = useState<TypingResult | null>(null);
   const [board, setBoard] = useState<DailyBoardRow[]>([]);
-  const [boardState, setBoardState] = useState<"loading" | "ready" | "unconfigured" | "error" | "signed-out">(
+  const [boardState, setBoardState] = useState<"loading" | "ready" | "unconfigured" | "error">(
     () => (IS_REMOTE_CONFIGURED ? "loading" : "unconfigured"),
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -46,27 +45,17 @@ export default function DailyArena() {
     track("daily_arena_start", { date: today });
     if (!IS_REMOTE_CONFIGURED) return;
     let cancelled = false;
-    getCurrentUser()
-      .then((user) => {
+    fetchDailyBoard(today)
+      .then((rows) => {
         if (cancelled) return;
-        if (!user) {
-          setBoardState("signed-out");
-          return;
-        }
-        return fetchDailyBoard(today)
-          .then((rows) => {
-            if (cancelled) return;
-            setBoard(rows);
-            setBoardState("ready");
-          })
-          .catch((e: unknown) => {
-            if (cancelled) return;
-            setBoardState("error");
-            setErrorMsg(e instanceof Error ? e.message : "Failed to load board");
-          });
+        setBoard(rows);
+        setBoardState("ready");
       })
       .catch(() => {
-        if (!cancelled) setBoardState("unconfigured");
+        if (!cancelled) {
+          setBoardState("error");
+          setErrorMsg("Failed to load the shared board");
+        }
       });
     return () => {
       cancelled = true;
@@ -105,7 +94,7 @@ export default function DailyArena() {
       <div className="rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 p-6 text-white">
         <div className="text-xs uppercase tracking-widest opacity-80">Daily Arena • {iso} • resets midnight Asia/Jakarta</div>
         <h1 className="mt-1 text-2xl font-black">{formatDailyTitle(challenge.iso)} Challenge</h1>
-        <p className="mt-1 text-sm opacity-90">Everyone gets the same standardized test today. Sign in to enter the shared board.</p>
+        <p className="mt-1 text-sm opacity-90">Everyone gets the same standardized test today. Publish a clean result to the shared board when you finish.</p>
         <div className="mt-2 text-xs opacity-75">Only clean attempts (no paste, no impossible bursts) enter the ranked board.</div>
       </div>
 
@@ -153,11 +142,6 @@ export default function DailyArena() {
         {boardState === "unconfigured" && (
           <p className="py-4 text-center text-sm text-zinc-500">
             The shared board needs the competition backend. Your attempt is still scored and saved locally. Operators: see <code>supabase/migrations</code> in the repo README.
-          </p>
-        )}
-        {boardState === "signed-out" && (
-          <p className="py-4 text-center text-sm text-zinc-500">
-            <Link href="/progress" className="underline">Sign in</Link> to publish your daily attempt and see today&apos;s ranked competitors.
           </p>
         )}
         {boardState === "error" && <p className="py-4 text-center text-sm text-red-600">Could not load board: {errorMsg}</p>}

@@ -34,6 +34,9 @@
 //     revoke RPC.
 // 17. Team admin permissions: member cannot publish, admin can, self-promote
 //     and ownership seizure denied, owner kick preserved.
+// 18. Anonymous-style shared identity bootstrap and profile nickname rules.
+// 19. Resource-scoped management capabilities: hash-only storage, scope,
+//     recovery, rotation, revocation, and direct-table isolation.
 //
 // Usage (after `supabase db reset`):
 //   node scripts/db-integration.mjs
@@ -233,6 +236,136 @@ try {
       await client.query("ROLLBACK").catch(() => undefined);
       throw e;
     }
+  }
+
+  // 18–19 — ANONYMOUS-FIRST IDENTITY + RESOURCE CAPABILITIES
+  {
+    // A null email models the product's anonymous Auth identity. The RPCs
+    // authorize by auth.uid(), never by a client-supplied arbitrary UUID.
+    const anonymousOwner = await createUser(null);
+    const recoveryUser = await createUser(null);
+    const profile = await asUser(anonymousOwner, () =>
+      client.query("SELECT public.ensure_shared_profile($1,$2) p", ["Anonymous Owner", "en"]),
+    );
+    const email = await client.query("select email from auth.users where id=$1", [anonymousOwner]);
+    ok("anonymous-style identity has no email", email.rows[0].email === null);
+    ok("shared bootstrap stores a nickname", profile.rows[0].p.username === "Anonymous Owner");
+
+    const createdTeam = await asUser(anonymousOwner, () =>
+      client.query("SELECT public.create_team($1) t", ["Capability Team"]),
+    );
+    const capabilityTeamId = createdTeam.rows[0].t.id;
+    const createdCustom = await asUser(anonymousOwner, () =>
+      client.query("SELECT public.create_custom_test($1::jsonb) id", [
+        JSON.stringify({ title: "Capability drill", language: "en", body: "A private capability test passage.", visibility: "private" }),
+      ]),
+    );
+    const capabilityCustomId = createdCustom.rows[0].id;
+    const createdAssessment = await asUser(anonymousOwner, () =>
+      client.query(
+        "insert into public.assessments (owner_id,title,modules) values ($1,$2,$3::jsonb) returning id",
+        [anonymousOwner, "Capability Assessment", JSON.stringify([{ id: "module-1", mode: "sprint", language: "en", duration_sec: 30 }])],
+      ),
+    );
+    const capabilityAssessmentId = createdAssessment.rows[0].id;
+
+    const issue = async (type, id) => (await asUser(anonymousOwner, () =>
+      client.query("SELECT public.issue_resource_management_token($1,$2) r", [type, id]),
+    )).rows[0].r;
+    const teamCapability = await issue("team", capabilityTeamId);
+    const customCapability = await issue("custom", capabilityCustomId);
+    const assessmentCapability = await issue("assessment", capabilityAssessmentId);
+    ok(
+      "capability tokens have high entropy and are returned only at issue time",
+      [teamCapability, customCapability, assessmentCapability].every((r) => /^[0-9a-f]{64}$/.test(r.token)),
+    );
+    const stored = await client.query(
+      "select resource_type, octet_length(token_hash) hash_bytes from public.resource_capabilities where resource_id = any($1::text[])",
+      [[capabilityTeamId, capabilityCustomId, capabilityAssessmentId]],
+    );
+    ok("only SHA-256-sized capability hashes are stored", stored.rows.length === 3 && stored.rows.every((r) => Number(r.hash_bytes) === 32));
+    await expectError(
+      "authenticated clients cannot read capability rows",
+      () => asUser(anonymousOwner, () => client.query("select token_hash from public.resource_capabilities limit 1")),
+    );
+    await expectError(
+      "capability cannot cross resource types",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('custom',$1,$2)",
+        [capabilityCustomId, teamCapability.token],
+      )),
+      "management_invalid",
+    );
+    await expectError(
+      "non-owner cannot issue a management capability",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.issue_resource_management_token('team',$1)",
+        [capabilityTeamId],
+      )),
+      "not_found_or_not_owner",
+    );
+
+    const recoveredTeam = await asUser(recoveryUser, () =>
+      client.query("SELECT public.recover_resource_management('team',$1,$2) r", [capabilityTeamId, teamCapability.token]),
+    );
+    const recoveredCustom = await asUser(recoveryUser, () =>
+      client.query("SELECT public.recover_resource_management('custom',$1,$2) r", [capabilityCustomId, customCapability.token]),
+    );
+    const recoveredAssessment = await asUser(recoveryUser, () =>
+      client.query("SELECT public.recover_resource_management('assessment',$1,$2) r", [capabilityAssessmentId, assessmentCapability.token]),
+    );
+    ok("valid scoped capability recovers exactly its team", recoveredTeam.rows[0].r.resource_id === capabilityTeamId);
+    ok("valid scoped capability recovers exactly its custom test", recoveredCustom.rows[0].r.resource_id === capabilityCustomId);
+    ok("valid scoped capability recovers exactly its assessment", recoveredAssessment.rows[0].r.resource_id === capabilityAssessmentId);
+    const owners = await client.query(
+      "select (select owner_id from public.teams where id=$1) team_owner, (select owner_id from public.custom_tests where id=$2) custom_owner, (select owner_id from public.assessments where id=$3) assessment_owner",
+      [capabilityTeamId, capabilityCustomId, capabilityAssessmentId],
+    );
+    ok(
+      "recovery transfers only the named resource to the current identity",
+      owners.rows[0].team_owner === recoveryUser
+        && owners.rows[0].custom_owner === recoveryUser
+        && owners.rows[0].assessment_owner === recoveryUser,
+    );
+    await expectError(
+      "successful recovery invalidates the previous custom capability",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('custom',$1,$2)",
+        [capabilityCustomId, customCapability.token],
+      )),
+      "management_invalid",
+    );
+    await expectError(
+      "successful recovery invalidates the previous assessment capability",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('assessment',$1,$2)",
+        [capabilityAssessmentId, assessmentCapability.token],
+      )),
+      "management_invalid",
+    );
+
+    const rotated = await asUser(recoveryUser, () =>
+      client.query("SELECT public.issue_resource_management_token('team',$1) r", [capabilityTeamId]),
+    );
+    await expectError(
+      "issuing a new capability revokes the previous one",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('team',$1,$2)",
+        [capabilityTeamId, teamCapability.token],
+      )),
+      "management_invalid",
+    );
+    await asUser(recoveryUser, () =>
+      client.query("select public.revoke_resource_management_token('team',$1)", [capabilityTeamId]),
+    );
+    await expectError(
+      "owner revocation invalidates the active capability",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('team',$1,$2)",
+        [capabilityTeamId, rotated.rows[0].r.token],
+      )),
+      "management_invalid",
+    );
   }
 
   const userC = await createUser("user-c@test.local");

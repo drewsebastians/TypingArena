@@ -24,7 +24,7 @@ import {
   type FriendChallengeRecord,
   type FriendChallengeResultRow,
 } from "@/lib/remote";
-import { getUsername } from "@/lib/history";
+import { getNickname } from "@/lib/history";
 import { track } from "@/lib/analytics";
 import type { CorpusItem, Language, TypingResult } from "@/lib/types";
 
@@ -87,7 +87,7 @@ function FriendsInner() {
               try {
                 const pool = language === "en" ? ENGLISH_SPRINT_POOL : INDONESIAN_CORPUS.filter((c) => c.mode === "sprint");
                 const exercise = pool[Math.floor(Math.random() * pool.length)];
-                const displayName = getUsername() ?? "challenger";
+      const displayName = getNickname() ?? "challenger";
                 const id = await createFriendChallenge({
                   creatorName: displayName,
                   payload: {
@@ -180,7 +180,7 @@ function AcceptChallenge({ challengeId }: { challengeId: string }) {
       setMyResult(r);
       try {
         await submitFriendResult(challengeId, {
-          displayName: getUsername() ?? "guest",
+          displayName: getNickname() ?? "guest",
           wpm: r.grossWpm,
           accuracy: r.accuracy,
           typedChars: r.typedChars,
