@@ -23,27 +23,47 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
       </div>
       <p className="text-xs text-zinc-500">{INTEGRITY_EXPLANATIONS[result.integrity]}</p>
 
-      <div className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-4">
-        <Stat label="WPM" main={String(result.grossWpm)} sub={`net ${result.netWpm} • CPM ${result.cpm}`} />
-        <Stat label="Accuracy" main={`${result.accuracy}%`} sub={`${result.correctChars}/${result.typedChars} chars`} />
-        <Stat label="Errors" main={String(result.uncorrectedErrors)} sub={`${result.correctedErrors} corrected • raw ${result.rawErrorEvents}`} />
-        <Stat label="Time" main={`${(result.elapsedMs / 1000).toFixed(1)}s`} sub={`of ${result.durationSec}s`} />
+      {/* Primary metric hierarchy */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="rounded-xl bg-zinc-50 p-5 text-center dark:bg-zinc-800">
+          <div className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Words per minute</div>
+          <div className="font-mono text-4xl font-black">{result.grossWpm}</div>
+          <div className="mt-1 text-xs text-zinc-500">net {result.netWpm} • {result.cpm} CPM</div>
+        </div>
+        <Stat label="Accuracy" main={`${result.accuracy}%`} sub={`${result.correctChars}/${result.typedChars}`} />
+        <Stat label="Time" main={`${(result.elapsedMs / 1000).toFixed(1)}s`} sub={`of ${result.durationSec}s • ${result.uncorrectedErrors} left unfixed`} />
       </div>
 
       {weakKeys.length > 0 && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
           <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            Weak keys: {weakKeys.map(([k]) => (k === " " ? "space" : `"${k}"`)).join(" ")}
+            Focus next: {weakKeys.map(([k]) => (k === " " ? "space" : `"${k}"`)).join(" ")}
           </div>
-          <div className="text-xs text-amber-800 dark:text-amber-300">Future exercises will prioritize these characters — selected deterministically from your error profile.</div>
+          <div className="text-xs text-amber-800 dark:text-amber-300">We’ll bias upcoming passages toward these characters.</div>
         </div>
       )}
 
-      {result.correctionLatencyMsAvg !== null && (
-        <p className="mb-3 text-xs text-zinc-500">Correction latency: {result.correctionLatencyMsAvg}ms average across {result.correctedErrors} fixed errors.</p>
-      )}
-
-      <ErrorHeatmap result={result} />
+      <details className="mt-4 rounded-lg border bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/50">
+        <summary className="cursor-pointer list-none text-sm font-semibold">Details — corrections & heatmap</summary>
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="rounded-lg bg-white p-3 dark:bg-zinc-900">
+              <div className="font-semibold">Corrections</div>
+              <div className="mt-1 text-zinc-600 dark:text-zinc-400">
+                {result.correctedErrors} fixed • {result.rawErrorEvents} raw events • {result.backspaceActions} backspaces
+              </div>
+              {result.correctionLatencyMsAvg !== null && (
+                <div className="mt-1 text-zinc-500">Avg latency {result.correctionLatencyMsAvg}ms</div>
+              )}
+            </div>
+            <div className="rounded-lg bg-white p-3 dark:bg-zinc-900">
+              <div className="font-semibold">Scope</div>
+              <div className="mt-1 text-zinc-600 dark:text-zinc-400">Typed {result.typedChars} chars • accuracy over typed scope only</div>
+            </div>
+          </div>
+          <ErrorHeatmap result={result} />
+        </div>
+      </details>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button

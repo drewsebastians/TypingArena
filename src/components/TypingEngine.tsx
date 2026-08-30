@@ -178,6 +178,13 @@ export default function TypingEngine({
     if (burstDetected) track("suspicious_burst_detected", { wpm: result.grossWpm });
   }, [durationSec, language, mode, exerciseId, exerciseVersion, challengeDate, onComplete, pasteFlag]);
 
+  // Active-exercise focus: secondary chrome visually recedes
+  useEffect(() => {
+    if (started && !finished) document.documentElement.setAttribute("data-exercise-active", "");
+    else document.documentElement.removeAttribute("data-exercise-active");
+    return () => document.documentElement.removeAttribute("data-exercise-active");
+  }, [started, finished]);
+
   // Timer — ends the test exactly at the configured duration. The same tick
   // emits throttled (~3/sec) advisory progress for observers.
   useEffect(() => {

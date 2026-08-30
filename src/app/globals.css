@@ -4,6 +4,16 @@
   --background: #ffffff;
   --foreground: #171717;
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #fafafa;
+  }
+}
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -15,7 +25,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Typing stream + metric numbers stay monospaced for alignment */
+.font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 /* ad slot placeholder — reserves layout, prevents CLS during tests */
@@ -34,4 +49,13 @@ body {
 .dark .ad-slot {
   background: #18181b;
   border-color: #27272a;
+}
+
+/* Focus state — secondary chrome recedes during active exercise */
+html[data-exercise-active] header {
+  opacity: 0.45;
+}
+html[data-exercise-active] header:hover,
+html[data-exercise-active] header:focus-within {
+  opacity: 1;
 }

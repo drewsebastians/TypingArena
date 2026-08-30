@@ -15,6 +15,7 @@ export function getLocale(): Locale {
 export function setLocale(l: Locale): void {
   try {
     localStorage.setItem(LS_KEY, l);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("locale-change"));
   } catch {
     /* ignore */
   }
@@ -45,9 +46,14 @@ export const STRINGS: Dict = {
   "common.submit": { en: "Submit", id: "Kirim" },
   "common.loading": { en: "Loading…", id: "Memuat…" },
   "common.backendRequired": {
-    en: "This feature needs the shared backend (Supabase). See README → Shared competition setup.",
-    id: "Fitur ini membutuhkan backend bersama (Supasi). Lihat README → Shared competition setup.",
+    en: "This feature will be available once the shared backend is connected. You can still practice every typing, dictation, and transcription exercise locally while offline.",
+    id: "Fitur ini akan tersedia setelah backend bersama terhubung. Kamu tetap bisa berlatih mengetik, dikte, dan transkripsi secara lokal.",
   },
+  "nav.practice": { en: "Practice", id: "Latihan" },
+  "nav.compete": { en: "Compete", id: "Kompetisi" },
+  "nav.groups": { en: "Teams", id: "Tim" },
+  "nav.progressFull": { en: "Progress", id: "Kemajuan" },
+  "nav.privacy": { en: "Privacy", id: "Privasi" },
   "common.signInFirst": { en: "Sign in first.", id: "Masuk dulu." },
   // career
   "career.title": { en: "Career Mode — Practice Assessments", id: "Mode Karier — Asesmen Latihan" },
