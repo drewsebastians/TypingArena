@@ -14,17 +14,17 @@ Executable checks: `node scripts/production-smoke.mjs` (usage inside).
 
 | # | Action | Where | Notes |
 |---|--------|-------|-------|
-| 1 | Create the production Supabase project; apply ALL migrations (`supabase db push`) | Supabase dashboard / CLI | Additive chain **0001→0014**; rerunnable from clean; never reset a live database |
+| 1 | Create the production Supabase project; apply ALL migrations (`supabase db push`) | Supabase dashboard / CLI | Additive chain **0001→0015**; rerunnable from clean; never reset a live database |
 | 2 | Set repo/environment **secrets**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | GitHub → Settings → Secrets | Deploy workflow passes them to the build |
 | 3 | Set repo **variable** `NEXT_PUBLIC_SITE_URL` (final https canonical origin) | GitHub → Settings → Variables | Drives sitemap/robots/canonicals/invite links; must exactly match the served origin |
 | 4 | Run "Deploy" workflow with `target=production` | GitHub Actions | Readiness gate FAILS CLOSED on missing/placeholder config |
 
-## 2. Required for auth + share links
+## 2. Required for anonymous shared actions + share links
 
 | # | Action | Where |
 |---|--------|-------|
-| 5 | Add `<SITE_URL>/progress` to Supabase Auth → Redirect URLs | Supabase dashboard |
-| 6 | Configure magic-link email template/sender | Supabase dashboard |
+| 5 | Enable Anonymous Sign-Ins in Supabase Auth | Supabase dashboard |
+| 6 | Set Supabase Auth Site URL to the final HTTPS origin | Supabase dashboard |
 
 Friend invites (`/friends?id=…`), assessment invites (`/assessments?invite=…`),
 multiplayer codes and custom-test shares are origin-relative — they inherit
@@ -53,4 +53,5 @@ Run the automated checks:
 SITE_URL=https://<your-origin> node scripts/production-smoke.mjs
 ```
 Then the human steps in `docs/PRODUCTION_LAUNCH_RUNBOOK.md` §H
-(magic-link cross-device hydration, team assignment round-trip).
+(anonymous shared-action bootstrap, capability-link recovery, team assignment
+round-trip, and assessment candidate submission).
