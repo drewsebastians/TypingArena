@@ -425,6 +425,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
             <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} aria-label="due date" className="ml-1 min-h-11 rounded-lg border px-2 py-1.5 text-sm dark:bg-zinc-800" />
           </label>
           <button
+            type="button"
             onClick={async () => {
               try {
                 const definition: AssignmentDefinition = kind === "career"
@@ -477,6 +478,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
                 </div>
                 {!isDone ? (
                   <button
+                    type="button"
                     onClick={() => setRunningId(a.id)}
                     disabled={busy}
                     className="min-h-11 rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-black"
@@ -554,7 +556,7 @@ function CareerAssignmentRunner({ assignment, onFinish, onBack }: {
   if (!track) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+        <button type="button" onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
         <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">This assignment references an unknown career track.</p>
       </div>
     );
@@ -595,7 +597,7 @@ function CareerAssignmentRunner({ assignment, onFinish, onBack }: {
   const mod: CareerModule | undefined = track.modules[idx];
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+      <button type="button" onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
       <p className="text-center text-xs uppercase tracking-widest text-zinc-500">
         {assignment.title} · {track.name} · module {Math.min(idx + 1, track.modules.length)}/{track.modules.length}
       </p>

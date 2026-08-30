@@ -59,7 +59,7 @@ export default function DictationPanel({
           steps={[{ href: "/transcription-practice", label: "Step up to Transcription" }]}
         >
           <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button onClick={nextClip} className="inline-flex min-h-11 items-center rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+          <button type="button" onClick={nextClip} className="inline-flex min-h-11 items-center rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
             Next clip →
           </button>
           </div>

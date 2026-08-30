@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci || npm install
+      - run: npm ci --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -54,7 +54,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci || npm install
+      - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npx playwright test

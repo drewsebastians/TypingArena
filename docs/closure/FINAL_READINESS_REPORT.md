@@ -2,9 +2,10 @@
 
 ## A. Executive status
 
-Repository closure is ready for PR review. The implementation is static,
-local-first, deterministic, and honest about missing shared infrastructure.
-No merge or deployment was performed.
+The final independent review recommends **READY FOR PR APPROVAL, EXTERNAL
+PRE-DEPLOY ACTIONS REMAIN**. The implementation is static, local-first,
+deterministic, and honest about missing shared infrastructure. No merge or
+deployment was performed.
 
 ## B. Git state at handoff
 
@@ -34,19 +35,21 @@ to code and proof.
 | B00–B06 | COMPLETE — PROVEN | Goal/route contracts, local-first identity, shell, homepage, lifecycle/ad primitives | Unit + existing Wave 1 evidence |
 | B07–B09 | COMPLETE — PROVEN | Shared typing/audio shells, static audio, Library, five-track Career | Full browser route/feature suite + readiness |
 | B10–B13 | COMPLETE — PROVEN | Competition, friends, multiplayer, teams, custom, assessments, progress/privacy | Browser suite + DB integration |
-| B14 | IMPLEMENTED — PROOF PENDING | Canonical SEO, analytics contract, safe ads | Static readiness and bundle scan; provider/AdSense activation external |
-| B15 | IMPLEMENTED — PROOF PENDING | Mobile/a11y touch sizing, focus behavior, responsive shared shells | 59 browser passes; human/device/hosted perf checks remain |
+| B14 | COMPLETE — PROVEN for repository scope | Canonical SEO/query handling, sanitized consent analytics, safe ads | Independent SEO/ad checks; provider/AdSense activation external |
+| B15 | COMPLETE — PROVEN for automated scope | Mobile/a11y touch sizing, focus behavior, reduced motion, responsive shells | Independent 6-viewport route/drawer suite; human/device/hosted perf checks remain |
 | B16 | COMPLETE — PROVEN | Traceability, red-team review, closure evidence | This report and final reviews |
 | R13 / R15 | EXTERNAL ACTION REQUIRED | Hosted smoke, owner merge/deploy | See external action register |
 | R16 | POST-LAUNCH VALIDATION | Strategic funnels/retention baseline | Measurement plan |
 
 ## E. DB/security evidence
 
-Fresh GitHub DB integration run `33312001583` applied migrations through 0015:
-**117 passed, 0 failed**. It covers RLS, anonymous identity, ranked evidence,
-Daily binding/idempotency, capability lifecycle and scope, team/custom/
-assessment authorization, multiplayer host authority, and deletion. See
-`FINAL_SECURITY_REVIEW.md` and `docs/goal-first/02_DB_IDENTITY_CAPABILITY_EVIDENCE.md`.
+The historical GitHub DB integration run `33312001583` predates migration 0016.
+The final-head DB run, which includes public-board privacy and the expanded
+capability/deletion assertions, is recorded in
+`PR4_FINAL_INDEPENDENT_REVIEW.md` and supersedes that historical reference.
+It covers RLS, anonymous identity, ranked evidence, Daily binding/idempotency,
+capability lifecycle and scope, team/custom/assessment authorization,
+multiplayer host authority, and deletion.
 
 ## F. Product/UX evidence
 
@@ -60,8 +63,8 @@ See `FINAL_UX_ACCESSIBILITY_REVIEW.md`.
 
 There are 26 registry routes, 25 indexable public routes, route-specific
 canonical metadata, noindex Progress, sitemap/robots generation, query-state
-noindex for invite/capability URLs, consent-gated analytics, and no runtime
-AI/TTS. AdSense is not activated because no publisher configuration exists.
+noindex, consent-gated sanitized analytics, and no runtime AI/TTS. AdSense is
+not activated because no publisher configuration exists.
 See `FINAL_SEO_MONETIZATION_REVIEW.md` and the analytics measurement plan.
 
 ## H. Validation matrix
@@ -71,12 +74,12 @@ See `FINAL_SEO_MONETIZATION_REVIEW.md` and the analytics measurement plan.
 | Exact clean install (`npm ci --no-audit --no-fund`) | PASS — 912 packages installed |
 | Lint | PASS |
 | Typecheck | PASS |
-| Unit/component tests | PASS — 19 files, 166 tests |
+| Unit/component tests | PASS — 19 files, 167 tests |
 | Static export build | PASS — 30 routes |
-| Desktop Playwright | PASS — included in 59 total passes |
-| Mobile Playwright | PASS — included in 59 total passes |
-| DB integration through migration 0015 | PASS — 117/117, GitHub run 33312001583 |
-| Final PR CI + E2E workflow | PASS — GitHub run 33312001599 |
+| Desktop Playwright | PASS — 35 passes; 2 project-scoped skips |
+| Mobile Playwright | PASS — 35 passes; 2 project-scoped skips |
+| DB integration through migration 0016 | Final-head result recorded in independent review |
+| Final PR CI + E2E workflow | Final-head result recorded in independent review |
 | Production readiness gate | PASS for demo/static target; production target correctly fails closed without env |
 | No-runtime-AI/TTS scan | PASS — no forbidden bundle fingerprints |
 | Static route/audio/SEO smoke | PASS — readiness gate, sitemap/robots, 20/20 WAVs |
@@ -108,7 +111,7 @@ CI counts.
 
 ## L. Final recommendation
 
-**READY FOR PR REVIEW**
+**READY FOR PR APPROVAL, EXTERNAL PRE-DEPLOY ACTIONS REMAIN**
 
 No unresolved code-level blocker remains in the available repository, unit,
 browser, static-readiness, or database evidence. Owner-controlled hosted and

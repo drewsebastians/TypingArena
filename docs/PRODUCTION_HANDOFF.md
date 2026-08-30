@@ -14,7 +14,7 @@ Executable checks: `node scripts/production-smoke.mjs` (usage inside).
 
 | # | Action | Where | Notes |
 |---|--------|-------|-------|
-| 1 | Create the production Supabase project; apply ALL migrations (`supabase db push`) | Supabase dashboard / CLI | Additive chain **0001→0015**; rerunnable from clean; never reset a live database |
+| 1 | Create the production Supabase project; apply ALL migrations (`supabase db push`) | Supabase dashboard / CLI | Additive chain **0001→0016**; rerunnable from clean; never reset a live database |
 | 2 | Set repo/environment **secrets**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | GitHub → Settings → Secrets | Deploy workflow passes them to the build |
 | 3 | Set repo **variable** `NEXT_PUBLIC_SITE_URL` (final https canonical origin) | GitHub → Settings → Variables | Drives sitemap/robots/canonicals/invite links; must exactly match the served origin |
 | 4 | Run "Deploy" workflow with `target=production` | GitHub Actions | Readiness gate FAILS CLOSED on missing/placeholder config |
@@ -26,7 +26,7 @@ Executable checks: `node scripts/production-smoke.mjs` (usage inside).
 | 5 | Enable Anonymous Sign-Ins in Supabase Auth | Supabase dashboard |
 | 6 | Set Supabase Auth Site URL to the final HTTPS origin | Supabase dashboard |
 
-Friend invites (`/friends?id=…`), assessment invites (`/assessments?invite=…`),
+Friend invites (`/friends?challenge=…`), assessment invites (`/assessments?invite=…`),
 multiplayer codes and custom-test shares are origin-relative — they inherit
 `NEXT_PUBLIC_SITE_URL` automatically once step 3 is done.
 

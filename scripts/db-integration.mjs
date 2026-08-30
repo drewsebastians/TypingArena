@@ -138,6 +138,14 @@ try {
     ok("server-derived wpm matches recomputation", Number(out.wpm) === 60);
     const vis = await client.query("select count(*) c from public.public_leaderboard where wpm=60");
     ok("accepted entry appears in public_leaderboard view", Number(vis.rows[0].c) >= 1);
+    const boardColumns = await client.query(
+      `select table_name, column_name
+         from information_schema.columns
+        where table_schema='public'
+          and table_name in ('public_leaderboard','public_daily_board')
+        order by table_name, ordinal_position`,
+    );
+    ok("public board views do not expose auth user IDs", !boardColumns.rows.some((r) => r.column_name === "user_id"));
   }
 
   // 3 — forged claim rejected
@@ -284,6 +292,17 @@ try {
       [[capabilityTeamId, capabilityCustomId, capabilityAssessmentId]],
     );
     ok("only SHA-256-sized capability hashes are stored", stored.rows.length === 3 && stored.rows.every((r) => Number(r.hash_bytes) === 32));
+    const storedValues = await client.query(
+      "select resource_type, resource_id, encode(token_hash, 'hex') token_hash from public.resource_capabilities where resource_id = any($1::text[])",
+      [[capabilityTeamId, capabilityCustomId, capabilityAssessmentId]],
+    );
+    ok(
+      "raw capability tokens are never stored",
+      storedValues.rows.every((r) => {
+        const token = r.resource_type === "team" ? teamCapability.token : r.resource_type === "custom" ? customCapability.token : assessmentCapability.token;
+        return r.token_hash !== token;
+      }),
+    );
     await expectError(
       "authenticated clients cannot read capability rows",
       () => asUser(anonymousOwner, () => client.query("select token_hash from public.resource_capabilities limit 1")),
@@ -293,6 +312,22 @@ try {
       () => asUser(recoveryUser, () => client.query(
         "select public.validate_resource_management_token('custom',$1,$2)",
         [capabilityCustomId, teamCapability.token],
+      )),
+      "management_invalid",
+    );
+    await expectError(
+      "malformed capability token is rejected",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('custom',$1,$2)",
+        [capabilityCustomId, "not-a-capability-token"],
+      )),
+      "management_invalid",
+    );
+    await expectError(
+      "capability cannot cross resource IDs of the same type",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('custom',$1,$2)",
+        [capabilityAssessmentId, customCapability.token],
       )),
       "management_invalid",
     );
@@ -365,6 +400,44 @@ try {
         [capabilityTeamId, rotated.rows[0].r.token],
       )),
       "management_invalid",
+    );
+
+    const expiring = await asUser(recoveryUser, () =>
+      client.query("SELECT public.issue_resource_management_token('team',$1) r", [capabilityTeamId]),
+    );
+    await client.query(
+      "update public.resource_capabilities set expires_at=now()-interval '1 minute' where resource_type='team' and resource_id=$1 and token_hash=digest($2,'sha256')",
+      [capabilityTeamId, expiring.rows[0].r.token],
+    );
+    await expectError(
+      "expired capability is rejected",
+      () => asUser(recoveryUser, () => client.query(
+        "select public.validate_resource_management_token('team',$1,$2)",
+        [capabilityTeamId, expiring.rows[0].r.token],
+      )),
+      "management_invalid",
+    );
+
+    await asUser(recoveryUser, () => client.query("select public.delete_my_shared_data()"));
+    const deletedShared = await client.query(
+      `select
+         (select count(*) from public.teams where owner_id=$1) teams,
+         (select count(*) from public.custom_tests where owner_id=$1) custom_tests,
+         (select count(*) from public.assessments where owner_id=$1) assessments,
+         (select count(*) from public.resource_capabilities where owner_id=$1) capabilities,
+         (select count(*) from public.profiles where id=$1) profiles,
+         (select count(*) from auth.users where id=$1) auth_users`,
+      [recoveryUser],
+    );
+    const sharedCounts = deletedShared.rows[0];
+    ok(
+      "shared-data deletion removes owned resources but retains the anonymous auth record",
+      Number(sharedCounts.teams) === 0
+        && Number(sharedCounts.custom_tests) === 0
+        && Number(sharedCounts.assessments) === 0
+        && Number(sharedCounts.capabilities) === 0
+        && Number(sharedCounts.profiles) === 0
+        && Number(sharedCounts.auth_users) === 1,
     );
   }
 

@@ -33,7 +33,7 @@ export default function PrivacyPanel({ onDeleted }: { onDeleted: () => void }) {
   };
 
   const deleteShared = async () => {
-    if (!window.confirm("Delete shared results and workspaces owned by this device identity? This cannot be undone.")) return;
+    if (!window.confirm("Delete this device identity's shared data? This permanently removes shared attempts and results, team memberships, owned Teams, Custom Tests, Assessments, API keys, profile/nickname, and management capabilities. Friend challenges you created are anonymized for other participants. Local practice history and the anonymous auth record are not deleted. This cannot be undone.")) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -52,9 +52,9 @@ export default function PrivacyPanel({ onDeleted }: { onDeleted: () => void }) {
       <h2 className="text-sm font-bold">Privacy & data</h2>
       <p className="mt-1 text-xs text-zinc-500">Practice history lives in this browser. Export it anytime, or remove local and shared data separately.</p>
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        <button onClick={download} className="min-h-11 rounded-full border px-4 py-1.5">Export practice data (JSON)</button>
-        <button onClick={deleteLocal} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700">Delete local data</button>
-        {IS_REMOTE_CONFIGURED && <button disabled={busy || pendingSyncCount() > 0} onClick={() => void deleteShared()} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700 disabled:opacity-50">{busy ? "Deleting…" : "Delete shared data"}</button>}
+        <button type="button" onClick={download} className="min-h-11 rounded-full border px-4 py-1.5">Export practice data (JSON)</button>
+        <button type="button" onClick={deleteLocal} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700">Delete local data</button>
+        {IS_REMOTE_CONFIGURED && <button type="button" disabled={busy || pendingSyncCount() > 0} onClick={() => void deleteShared()} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700 disabled:opacity-50">{busy ? "Deleting…" : "Delete shared data"}</button>}
       </div>
       {msg && <p role="status" className="mt-2 text-xs text-emerald-700">{msg}</p>}
     </div>

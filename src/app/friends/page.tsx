@@ -78,6 +78,7 @@ function FriendsInner() {
           </div>
 
           <button
+            type="button"
             onClick={async () => {
               setCreating(true);
               setError(null);

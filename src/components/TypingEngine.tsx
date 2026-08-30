@@ -58,6 +58,17 @@ function newId(): string {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+type KeyClass = "space" | "digit" | "letter" | "punctuation" | "other";
+
+/** Analytics needs error shape, never the actual expected/typed characters. */
+function keyClass(key: string): KeyClass {
+  if (key === " ") return "space";
+  if (/^[0-9]$/.test(key)) return "digit";
+  if (/^\p{L}$/u.test(key)) return "letter";
+  if (/^\p{P}$/u.test(key) || /^\p{S}$/u.test(key)) return "punctuation";
+  return "other";
+}
+
 interface EntryView {
   expected: string;
   typed: string;
@@ -301,7 +312,7 @@ export default function TypingEngine({
     accumulateBigram(bigramRef.current, prevTop ? prevTop.expected : null, { expected, typed }, prevTop);
     keystrokeTimesRef.current.push(time);
     if (typed !== expected) {
-      track("keystroke_error", { expected: expected === " " ? "space" : expected, got: typed === " " ? "space" : typed });
+      track("keystroke_error", { expectedClass: keyClass(expected), typedClass: keyClass(typed) });
     }
     setEntries(trackerRef.current.finalEntries().map((x) => ({ expected: x.expected, typed: x.typed })));
   };

@@ -28,11 +28,11 @@ Current frozen main at time of writing: `936ee1e` → landed line
 2. Apply migrations from a clean checkout:
    ```bash
    supabase link --project-ref <ref>
-   supabase db push            # applies 0001→0015 additively, in order
+   supabase db push            # applies 0001→0016 additively, in order
    ```
    The chain is additive and rerunnable-from-clean. NEVER run `db reset`
    against production.
-3. Verify: Dashboard → Database → Migrations lists 0001…0015 as applied;
+3. Verify: Dashboard → Database → Migrations lists 0001…0016 as applied;
    Table Editor shows `attempts`, `teams`, `assignments`,
    `assignment_completions`, `assessments`, `assessment_results`, `rooms`,
    `room_results`, `custom_tests`, `friend_challenges(+results)`, `profiles`,

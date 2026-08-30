@@ -42,7 +42,6 @@ export function getClient(): SupabaseClient {
 
 export interface PublicLeaderboardRow {
   id: string;
-  user_id: string;
   username: string | null;
   mode: Mode;
   language: Language;
@@ -54,7 +53,6 @@ export interface PublicLeaderboardRow {
 
 export interface DailyBoardRow {
   id: string;
-  user_id: string;
   username: string | null;
   wpm: number;
   accuracy: number;
@@ -96,7 +94,7 @@ export async function fetchLeaderboard(opts: {
 }): Promise<PublicLeaderboardRow[]> {
   let query = getClient()
     .from("public_leaderboard")
-    .select("id,user_id,username,mode,language,duration_sec,wpm,accuracy,scored_at")
+    .select("id,username,mode,language,duration_sec,wpm,accuracy,scored_at")
     .order("wpm", { ascending: false })
     .limit(opts.limit ?? 50);
   if (opts.mode) query = query.eq("mode", opts.mode);
@@ -124,7 +122,7 @@ export async function fetchMyBestRank(): Promise<number | null> {
 export async function fetchDailyBoard(challengeDate: string): Promise<DailyBoardRow[]> {
   const { data, error } = await getClient()
     .from("public_daily_board")
-    .select("id,user_id,username,wpm,accuracy,scored_at")
+    .select("id,username,wpm,accuracy,scored_at")
     .eq("challenge_date", challengeDate)
     .order("wpm", { ascending: false })
     .limit(100);

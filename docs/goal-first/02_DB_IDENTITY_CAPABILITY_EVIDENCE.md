@@ -1,11 +1,16 @@
 # Anonymous identity and capability DB evidence
 
+> Historical preparation evidence: run `33312001583` predates migration
+> `0016_public_board_privacy.sql`. The final-head DB proof and exact current
+> workflow ID are maintained in `docs/closure/PR4_FINAL_INDEPENDENT_REVIEW.md`;
+> this file is retained for provenance, not as the final-head authority.
+
 ## Execution
 
 - Workflow: `Backend integration (local Supabase)`
 - PR: [#4](https://github.com/drewsebastians/TypingArena/pull/4)
 - Run: [33312001583](https://github.com/drewsebastians/TypingArena/actions/runs/33312001583)
-- Migration reset: PASS, migrations `0001` through `0015` applied from a fresh local stack.
+- Migration reset: PASS, migrations `0001` through `0015` applied from a fresh local stack (historical; final chain is through `0016`).
 - Runner: GitHub Actions Ubuntu runner with Docker and Supabase CLI.
 - Result: **117 passed, 0 failed**.
 

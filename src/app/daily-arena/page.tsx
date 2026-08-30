@@ -98,7 +98,7 @@ export default function DailyArena() {
   return (
     <ToolPageShell
       eyebrow={locale === "id" ? "Kompetisi" : "Compete"}
-      title={`${formatDailyTitle(challenge.iso)} ${locale === "id" ? "Challenge" : "Challenge"}`}
+      title={`${formatDailyTitle(challenge.iso)} ${locale === "id" ? "Tantangan" : "Challenge"}`}
       description={locale === "id" ? "Satu tantangan standar per hari. Mainkan secara lokal, lalu publikasikan hasil bersih ke papan bersama saat backend kompetisi tersedia." : "One standardized challenge per day. Play locally, then publish a clean result to the shared board when the competition backend is available."}
     >
       <div className="mx-auto max-w-3xl">
@@ -162,7 +162,7 @@ export default function DailyArena() {
             {board.map((e, i) => (
               <li key={e.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="font-mono text-xs text-zinc-500">#{i + 1}</span>
-                <span className="flex-1 px-3 font-semibold">@{e.username ?? e.user_id.slice(0, 8)}</span>
+                <span className="flex-1 px-3 font-semibold">@{e.username ?? "typer"}</span>
                 <span className="font-mono font-bold">{Number(e.wpm).toFixed(1)} WPM</span>
                 <span className="ml-3 text-xs text-zinc-500">{Number(e.accuracy).toFixed(1)}%</span>
               </li>

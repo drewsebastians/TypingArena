@@ -106,7 +106,8 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
    `0008_explicit_client_grants.sql`, `0009_assessment_results_read_grant.sql`,
    `0010_anon_assessment_probe_grant.sql`, `0011_assessments_policy_probe_grant.sql`,
    `0012_pgcrypto_search_path_fix.sql`, `0013_migrate_conflict_target_fix.sql`,
-   `0014_assignment_admin_policy_fix.sql`, `0015_anonymous_identity_capabilities.sql`.
+   `0014_assignment_admin_policy_fix.sql`, `0015_anonymous_identity_capabilities.sql`,
+   `0016_public_board_privacy.sql`.
 3. Enable Anonymous Sign-Ins in Supabase Auth and set Site URL to your origin.
    The product does not expose email login, password, or magic-link UI.
 4. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

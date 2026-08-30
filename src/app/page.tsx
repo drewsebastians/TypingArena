@@ -2,9 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import TypingTestPanel from "@/components/TypingTestPanel";
-import DictationPanel from "@/components/DictationPanel";
-import TranscriptionPanel from "@/components/TranscriptionPanel";
 import GoalGrid from "@/components/goals/GoalGrid";
 import GoalSummaryBar from "@/components/goals/GoalSummaryBar";
 import ActiveTaskBoundary from "@/components/tool/ActiveTaskBoundary";
@@ -13,6 +12,17 @@ import { useLocale } from "@/components/LocaleProvider";
 import { getGoal, type GoalId } from "@/lib/goals";
 import type { TaskLifecycle } from "@/lib/taskLifecycle";
 import { track } from "@/lib/analytics";
+
+// Keep the first typing workspace in the initial route bundle. Audio-heavy
+// workspaces are loaded only after the visitor chooses those goals.
+const HomeDictationPanel = dynamic(() => import("@/components/DictationPanel"), {
+  ssr: false,
+  loading: () => <WorkspaceLoading />,
+});
+const HomeTranscriptionPanel = dynamic(() => import("@/components/TranscriptionPanel"), {
+  ssr: false,
+  loading: () => <WorkspaceLoading />,
+});
 
 export default function Home() {
   const { locale } = useLocale();
@@ -114,8 +124,8 @@ function GoalWorkspace({ goal, onLifecycleChange }: { goal: GoalId; onLifecycleC
       </Suspense>
     );
   }
-  if (goal === "listen-better") return <DictationPanel onLifecycleChange={onLifecycleChange} />;
-  if (goal === "transcribe-accurately") return <TranscriptionPanel onLifecycleChange={onLifecycleChange} />;
+  if (goal === "listen-better") return <HomeDictationPanel onLifecycleChange={onLifecycleChange} />;
+  if (goal === "transcribe-accurately") return <HomeTranscriptionPanel onLifecycleChange={onLifecycleChange} />;
 
   const content = {
     "prepare-for-work": {

@@ -101,6 +101,83 @@ const QUEUE_KEY = "ta:analytics_queue";
 let posthogLoading = false;
 let gtagLoading = false;
 
+// Analytics is a privacy boundary, not just a transport adapter. Keep the
+// denylist here as a second line of defense so a future feature cannot
+// accidentally forward typed text, answers, resource secrets, or identity
+// identifiers merely by calling track(). Callers should still pass only
+// coarse, intentional metadata.
+const PRIVATE_PROP_KEYS = new Set([
+  "email",
+  "useremail",
+  "authuuid",
+  "userid",
+  "ownerid",
+  "uuid",
+  "id",
+  "typed",
+  "typedtext",
+  "typedchar",
+  "typedchars",
+  "typedcharacter",
+  "typedcharacters",
+  "text",
+  "rawtext",
+  "transcript",
+  "answer",
+  "answers",
+  "rawanswer",
+  "token",
+  "password",
+  "secret",
+  "invite",
+  "invitecode",
+  "managementtoken",
+  "managementlink",
+  "exerciseid",
+  "assignmentid",
+  "clipid",
+  "challengeid",
+  "resourceid",
+  "code",
+  "playerkey",
+  "expected",
+  "expectedchar",
+  "expectedcharacter",
+  "expectedcharacters",
+  "got",
+  "gotchar",
+  "gotcharacter",
+  "gotcharacters",
+  "content",
+  "body",
+]);
+
+const PRIVATE_PROP_PARTS = [
+  "email", "auth", "user", "owner", "uuid", "transcript", "answer",
+  "token", "secret", "password", "invite", "manage", "exercise", "assignment",
+  "clip", "challenge", "resource", "session", "key", "code", "content", "body",
+  "url", "href", "name",
+];
+
+function safeAnalyticsProps(props: Record<string, unknown>): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (PRIVATE_PROP_KEYS.has(normalized) || PRIVATE_PROP_PARTS.some((part) => normalized.includes(part))) continue;
+    // Nested objects and arrays are intentionally excluded. The current
+    // event catalogue uses scalar values only, which prevents hidden text or
+    // provider-specific payloads from bypassing the boundary.
+    if (typeof value === "string") {
+      safe[key] = value.slice(0, 120);
+    } else if (typeof value === "number" && Number.isFinite(value)) {
+      safe[key] = value;
+    } else if (typeof value === "boolean") {
+      safe[key] = value;
+    }
+  }
+  return safe;
+}
+
 function posthogGlobal(): { capture: (e: string, p: Record<string, unknown>) => void } | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as { posthog?: { capture: (e: string, p: Record<string, unknown>) => void } };
@@ -167,7 +244,8 @@ function ensureGtag(): void {
 
 export function track(event: EventName, props: Record<string, unknown> = {}): void {
   if (typeof window === "undefined") return;
-  const payload = { event, props, ts: Date.now(), path: window.location.pathname };
+  const safeProps = safeAnalyticsProps(props);
+  const payload = { event, props: safeProps, ts: Date.now(), path: window.location.pathname };
 
   try {
     const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as unknown[];
@@ -181,11 +259,11 @@ export function track(event: EventName, props: Record<string, unknown> = {}): vo
   if (getAnalyticsConsent() === "granted") {
     ensurePosthog();
     const ph = posthogGlobal();
-    if (ph) ph.capture(event, { ...props, path: payload.path });
+    if (ph) ph.capture(event, { ...safeProps, path: payload.path });
     if (GA_ID) {
       ensureGtag();
       const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-      if (gtag) gtag("event", event, props);
+      if (gtag) gtag("event", event, safeProps);
     }
   }
 }

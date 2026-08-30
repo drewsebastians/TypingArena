@@ -70,8 +70,9 @@ export default function ProgressPage() {
 
       {pending > 0 && (
         <div role="status" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          <span>{pending} shared result{pending === 1 ? "" : "s"} waiting to upload.</span>
-          <button onClick={() => void syncNow()} className="min-h-11 rounded-full border px-3 py-1 font-semibold">Sync shared results</button>
+          <span>{pending} result{pending === 1 ? "" : "s"} you chose to share are waiting to send.</span>
+          <button type="button" onClick={() => void syncNow()} className="min-h-11 rounded-full border px-3 py-1 font-semibold">Send chosen shared results</button>
+          <span className="basis-full">Only results from an explicit shared action appear here; ordinary practice stays on this device.</span>
           {syncMsg && <span>{syncMsg}</span>}
         </div>
       )}

@@ -21,8 +21,11 @@ Evidence:
   heading on desktop and mobile;
 - `scripts/production-smoke.mjs` checks canonical origin/base path, robots,
   sitemap, HTML titles/lang, one JS chunk, and a static dictation WAV;
-- invite/challenge/management query states add a `noindex,nofollow` meta tag at
-  runtime through `FeaturePageShell`, while their clean route remains indexable.
+- query-bearing tool states add a `noindex,nofollow` meta tag at runtime through
+  `ToolPageShell`, while their clean route remains indexable;
+- the independent review suite covers query noindex, locale/document language,
+  required viewport overflow, and active-task ad removal for typing, dictation,
+  transcription, noise, and Daily.
 
 ## Monetization result
 
@@ -38,7 +41,8 @@ Ad boundary contract:
 - `SafeAdSlot` removes itself while `data-exercise-active` is present;
 - result/discovery/outside-task slots reserve layout space to reduce CLS;
 - audio never autoplays and ad markup cannot appear in an active task;
-- current E2E proves typing and dictation slots disappear on activation.
+- independent E2E proves typing, dictation, transcription, noise, and Daily
+  slots disappear on activation.
 
 ## External monetization actions
 

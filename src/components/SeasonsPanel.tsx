@@ -7,7 +7,8 @@ import Link from "next/link";
 import { currentSeason, recentSeasons } from "@/lib/seasons";
 import type { Season } from "@/lib/seasons";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
-import { fetchLeaderboard, getCurrentUser, type PublicLeaderboardRow } from "@/lib/remote";
+import { fetchLeaderboard, type PublicLeaderboardRow } from "@/lib/remote";
+import { getNickname } from "@/lib/history";
 import { SafeAdSlot } from "@/components/AdSlot";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
@@ -19,12 +20,12 @@ export default function SeasonsPanel() {
   const [mode, setMode] = useState<ModeFilter>("all");
   const [rows, setRows] = useState<PublicLeaderboardRow[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "unconfigured">("loading");
-  const [me, setMe] = useState<string | null>(null);
+  const [localName, setLocalName] = useState<string | null>(null);
   const seasons = recentSeasons(6);
 
   useEffect(() => {
     track("leaderboard_view", { source: "seasons", season: season.id });
-    if (IS_REMOTE_CONFIGURED) void getCurrentUser().then((u) => setMe(u?.id ?? null));
+    setLocalName(getNickname());
   }, [season.id]);
 
   const load = useCallback(async () => {
@@ -74,7 +75,7 @@ export default function SeasonsPanel() {
         {filtered.length > 0 && (
           <ol className="divide-y">
             {filtered.map((r, i) => (
-              <li key={r.id} className={`flex items-center justify-between px-4 py-3 ${me && r.user_id === me ? "bg-emerald-50/60 dark:bg-emerald-950/40" : ""}`}>
+              <li key={r.id} className={`flex items-center justify-between px-4 py-3 ${localName && r.username === localName ? "bg-emerald-50/60 dark:bg-emerald-950/40" : ""}`}>
                 <span className="w-8 font-mono text-sm text-zinc-500">#{i + 1}</span>
                 <span className="flex-1 font-semibold">@{r.username ?? "typer"}</span>
                 <span className="hidden rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 sm:inline dark:bg-zinc-800 dark:text-zinc-300">{r.mode} · {r.language} · {r.duration_sec}s</span>

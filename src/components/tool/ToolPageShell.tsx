@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 export default function ToolPageShell({
   eyebrow,
@@ -17,6 +17,7 @@ export default function ToolPageShell({
 }) {
   return (
     <div className={`mx-auto ${width} px-4 py-6`}>
+      <QueryStateRobots />
       <header className="mx-auto max-w-3xl">
         {eyebrow && <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">{eyebrow}</p>}
         <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{title}</h1>
@@ -25,4 +26,18 @@ export default function ToolPageShell({
       <div className="mt-6">{children}</div>
     </div>
   );
+}
+
+/** Query variants are utility/share state, never search landing pages. */
+function QueryStateRobots() {
+  useEffect(() => {
+    if (!window.location.search) return;
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex,nofollow";
+    meta.dataset.queryStateRobots = "true";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
+  return null;
 }
