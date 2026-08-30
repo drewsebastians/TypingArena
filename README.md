@@ -183,7 +183,8 @@ state — integration is complete either way.
   playback reducer, streaks, skill matrix, corpus+audio-manifest consistency,
   sync evidence/merge, career bands, season math, sanitization, engine timer
   semantics, paste blocking, versioning.
-- **28 Playwright E2E specs × desktop + mobile**: full-clock sprints, 5-min HUD,
+- **30 Playwright E2E scenarios × desktop + mobile** (60 project cases; 59
+  passes + 1 intentional desktop skip): full-clock sprints, 5-min HUD,
   untouched-text accuracy, static audio resolution (EN/ID .wav), transcription
   flow, honest degradation of shared features offline, library filtering,
   career track list, keyboard reachability, robots/sitemap hygiene.
@@ -196,6 +197,15 @@ state — integration is complete either way.
 
 ## Documentation index
 
+- `docs/blueprint/README.md` — canonical integrated blueprint and batching-plan index
+- `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v2.md` — canonical strategic/product north star
+- `docs/blueprint/TypingArena_Grand_Batching_Plan_v2.md` — canonical closure execution roadmap
+- `docs/closure/FINAL_READINESS_REPORT.md` — A–L closure handoff and final recommendation
+- `docs/closure/BLUEPRINT_TRACEABILITY_MATRIX.md` — B00–B16 / R0–R16 evidence map
+- `docs/closure/FINAL_SECURITY_REVIEW.md`, `docs/closure/FINAL_UX_ACCESSIBILITY_REVIEW.md`, and `docs/closure/FINAL_SEO_MONETIZATION_REVIEW.md` — final review records
+- `docs/closure/EXTERNAL_ACTION_REGISTER.md` — hosted, owner, provider, and post-launch actions
+- `docs/analytics/STRATEGIC_VALIDATION_MEASUREMENT_PLAN.md` — consented post-launch measurement plan
+- `docs/goal-first/00_WAVE1_BASELINE.md` and `docs/goal-first/01_WAVE1_IMPLEMENTATION_NOTES.md` — Wave 1 evidence
 - `docs/ADR-001-deployment.md` — deployment architecture decision
 - `docs/ADR-002-product-day.md` — Asia/Jakarta product-day boundary
 - `docs/ADR-003-scoring.md` — scoring v2 semantics + integrity model
@@ -203,7 +213,7 @@ state — integration is complete either way.
 - `docs/LICENSES.md` — content/audio rights record (closed: Piper MIT)
 - `docs/api/openapi.yaml` — Tournament API v1 specification
 - `docs/PRODUCTION_HANDOFF.md` — external launch actions (the only remaining work)
-- `BLUEPRINT_COMPLETION_REPORT.md` — final status matrix with evidence
+- `BLUEPRINT_COMPLETION_REPORT.md` — historical pre-closure status matrix
 
 ## Contributing
 

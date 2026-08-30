@@ -1,4 +1,7 @@
 # TypingArena — Grand Batching Plan
+
+> Historical/superseded execution plan. The canonical continuation plan is `docs/blueprint/TypingArena_Grand_Batching_Plan_v2.md`.
+
 ## From Current Repository to Option 2 “Goal First” Ultimate Blueprint
 
 **Plan version:** 1.0  

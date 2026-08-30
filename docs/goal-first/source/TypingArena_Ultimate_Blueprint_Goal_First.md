@@ -1,4 +1,7 @@
 # TypingArena — Ultimate Blueprint
+
+> Historical/superseded implementation blueprint. The canonical continuation specification is `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v2.md`.
+
 ## Option 2: Goal First
 
 **Blueprint version:** 1.0  

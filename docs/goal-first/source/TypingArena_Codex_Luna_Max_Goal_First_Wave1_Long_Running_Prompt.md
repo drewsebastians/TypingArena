@@ -1,4 +1,7 @@
 # TypingArena — Codex Luna Max Long-Running Implementation Prompt
+
+> Historical/superseded Wave 1 prompt. The canonical continuation specification is `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v2.md`; this file is retained as execution provenance.
+
 ## Goal-First Wave 1: Repository Re-baseline → No-Account Foundation → Goal-First Core → Core Practice Migration
 
 **Intended model:** Codex — Luna Max  
