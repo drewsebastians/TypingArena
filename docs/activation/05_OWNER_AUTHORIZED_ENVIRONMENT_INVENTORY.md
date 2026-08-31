@@ -2,6 +2,12 @@
 
 Captured: 2026-08-31 (Asia/Jakarta)
 
+> Superseding correction (2026-08-31): Owner authorization is confirmed under
+> the latest credentialed operator prompt. The current release classification is
+> **READY FOR CREDENTIALLED OPERATOR — ACCESS BLOCKER ONLY** because the
+> production project identity and secure operator credentials remain
+> unavailable.
+
 Only redacted presence/status information is recorded. No secret values,
 tokens, keys, or private connection strings are included.
 
@@ -32,7 +38,7 @@ tokens, keys, or private connection strings are included.
 | AdSense activation | NOT APPROVED / NOT CONFIGURED | No publisher value or ads.txt added |
 | Search Console | UNKNOWN | Post-deploy external validation |
 | Manual accessibility/CWV | PENDING | Requires real-device/operator evidence |
-| Exact authorization gate | NOT SATISFIED | User message omitted the required final period |
+| Exact authorization gate | CONFIRMED | Latest prompt accepts semantic authorization regardless of terminal punctuation |
 
 ## Environment stop condition
 
@@ -42,3 +48,4 @@ before any production mutation. Those prerequisites are not proven here.
 
 Do not run supabase db push, change Supabase Auth, set production secrets or
 variables, merge PR #4, or dispatch a production deployment from this state.
+The access blocker must be cleared by a credentialed operator outside chat.

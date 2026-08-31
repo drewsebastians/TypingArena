@@ -1,71 +1,121 @@
 # Final Owner-Authorized Release Report
 
-Captured: 2026-08-31 (Asia/Jakarta), before this documentation-only update.
+Captured: 2026-08-31 (Asia/Jakarta) during the credentialed production
+operator preflight. The repository and PR evidence was re-baselined at
+8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 before this documentation-only
+update.
 
-This report follows the owner-authorized prompt's required A–P structure.
+This report follows the latest attached prompt's required A–Q structure. It
+records verified evidence separately from production actions that remain
+blocked by missing secure access.
 
 ## A. Executive status
 
-**NOT READY — BLOCKERS REMAIN**
+**READY FOR CREDENTIALLED OPERATOR — ACCESS BLOCKER ONLY**
 
-## B. Authorization state
+The code and PR gates are green. Production Supabase identity, secure
+credentialed operator access, backup/recovery evidence, and production
+configuration are not available in this workspace, so no production mutation,
+merge, or deployment was performed.
 
-The current user message supplied the authorization phrase without the final
-period. The attached prompt requires the exact statement including that period,
-so the exact authorization gate is not satisfied. The real production project,
-migration state, backup/recovery gate, and credentialed operator are also not
-proven.
+## B. Authorization
 
-## C. Git / PR state
+**OWNER AUTHORIZATION: CONFIRMED**
 
-| Item | State |
+The owner authorization is semantically present. The latest prompt explicitly
+says terminal punctuation or whitespace differences do not invalidate the
+authorization. This authorizes the specified production actions only after
+their individual safety and identity gates pass; it does not authorize
+inventing credentials, bypassing failed gates, exposing secrets, or resetting a
+production database.
+
+## C. Git / PR
+
+| Item | Verified state |
 |---|---|
-| Starting head | 7bf1c93fa39b01e74563e2e0297ba0eac725f4e7 |
+| Repository | drewsebastians/TypingArena |
 | Branch | codex/goal-first-wave1 |
-| Base | main at b99779bc208c5abd2aa2e67e618927a2db949c42 |
 | PR | #4, open, non-draft |
+| PR head at rebaseline | 8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 |
+| Base | main at b99779bc208c5abd2aa2e67e618927a2db949c42 |
+| Ahead/behind | 14 ahead, 0 behind |
 | Mergeability | MERGEABLE; merge state CLEAN |
-| CI | PASS, run 33333776170 |
-| DB | PASS, run 33333776166 |
-| Merge result | Not merged |
-| Merge SHA | None |
+| Reviews / requests | 0 reviews; no review requests |
+| Inline / issue comments | 0 / 0 |
+| Worktree | clean at rebaseline |
+| Main protection | GitHub API reported main is not protected |
+| Merge result | Not merged; no merge SHA |
 
-## D. Production environment
+Exact-head remote checks at rebaseline:
 
-| Area | Status | Evidence | Mutation performed |
-|---|---|---|---|
-| Hosting | GitHub Pages demo | Pages API; deploy run 33297195121 | No |
-| Origin | https://drewsebastians.github.io/TypingArena/ | Published main demo | No |
-| Supabase project | Unknown / not provided | No project ref or credentialed operator | No |
-| Migration state | Unknown in production | Repository has 0001–0016; local DB CI passes | No |
-| Anonymous Auth | Unknown | Production dashboard unavailable | No |
-| Analytics | Disabled / unconfigured | No provider keys | No |
-| Ads | Not approved / unconfigured | No publisher value or ads.txt | No |
+- CI: PASS, workflow run 33345378731, job 99348372435.
+- E2E: PASS, workflow run 33345378731, job 99348538976; 70 passed,
+  4 skipped.
+- DB integration: PASS, workflow run 33345378722, job 99348372255; 123
+  passed, 0 failed.
 
-## E. Supabase activation
+The documentation update itself is non-production evidence. PR metadata and
+checks must be revalidated at the final pushed documentation head.
 
-Production Supabase activation was not performed. The repository migration
-chain through 0016 and local Supabase integration are proven by CI: 123 passed,
-0 failed. Production migration history, pending delta, Anonymous Sign-In,
-Site URL, redirect allowlist, RLS/RPC contract, capability contract, purge
-schedule, and shared-flow smoke remain unverified.
+## D. Credential / environment state
 
-## F. Deployment
+| Area | Status | Evidence |
+|---|---|---|
+| Supabase CLI | MISSING | supabase command is not installed |
+| Supabase project identity | NOT PROVIDED | No verified project ref, name, or region |
+| Supabase access token | ABSENT / NOT DISCLOSED | No documented process key |
+| Local production env | ABSENT | Only .env.example is present |
+| Required site URL | ABSENT | No process key or GitHub Actions variable |
+| Supabase URL secret | ABSENT | Repository and github-pages secret inventories are empty |
+| Supabase anon-key secret | ABSENT | Repository and github-pages secret inventories are empty |
+| GitHub Actions variables | EMPTY | Repository and github-pages variable inventories are empty |
+| GitHub Pages origin | PRESENT | https://drewsebastians.github.io/TypingArena/ |
+| Latest published revision | KNOWN | main at b99779bc208c5abd2aa2e67e618927a2db949c42; deploy run 33297195121 |
+| Credential classification | NO PROJECT IDENTITY / INSUFFICIENT ACCESS | Production identity and secure operator context cannot be proven |
 
-The repository uses .github/workflows/deploy.yml with GitHub Pages. The latest
-published revision is main at b99779bc208c5abd2aa2e67e618927a2db949c42
-(workflow run 33297195121). PR #4 was not merged or deployed, so there is no
-production deployed SHA or approved production deployment run for this release.
+Only names/presence and public metadata were inspected. No secret value was
+printed, requested, committed, or stored.
 
-## G. Hosted smoke
+## E. Supabase production activation
 
-- Read-only demo smoke: **37 passed, 0 failed**.
-- Shared write smoke: **NOT RUN**; no production backend identity/configuration.
-- Public ranked write smoke: **SKIPPED AS UNSAFE**; no disposable safe mode.
+**NOT PERFORMED — ACCESS BLOCKER**
 
-The 37-check result is for the published main demo and is not PR #4 proof.
+The repository contains migrations 0001–0016 and the exact-head DB integration
+proof is green, but production migration history, pending delta, backup/PITR or
+approved recovery method, Anonymous Sign-Ins, Site URL/redirects, RLS/RPC
+contract, capability contract, purge schedule, and Edge Function state are
+unverified. No production project was linked and no production SQL or Auth
+setting was changed.
 
-## H. Security/privacy
+## F. Hosted shared preflight
+
+**NOT RUN — PRODUCTION IDENTITY/CONFIGURATION UNAVAILABLE**
+
+The existing hosted smoke is a read-only smoke of the published main demo:
+37 passed, 0 failed. It is not PR #4 proof and does not establish a production
+shared backend. Disposable shared-flow smoke and ranked-write smoke were not
+run; ranked writes remain skipped as unsafe without a safe disposable
+namespace.
+
+## G. Merge / deploy
+
+**NOT PERFORMED**
+
+PR #4 remains open and unmerged. The latest known deployment is GitHub Pages
+main at b99779bc208c5abd2aa2e67e618927a2db949c42, workflow run 33297195121.
+No approved merge SHA or deployment of the PR #4 code exists. The production
+hosting variables and Supabase secrets required by
+.github/workflows/deploy.yml are absent.
+
+## H. Production smoke
+
+**NOT RUN — NO PRODUCTION DEPLOYMENT**
+
+The 37/37 hosted result belongs to the existing main demo. A post-deploy
+production smoke against the approved PR #4 merge cannot be claimed until the
+identity, configuration, merge, and deployment gates pass.
+
+## I. Security / privacy
 
 Repository proof is green for public-board UUID privacy, server-authoritative
 ranked writes, official exercise binding, RLS/RPC boundaries, capability
@@ -73,95 +123,95 @@ hashing/rotation/revocation, deletion paths, and analytics sanitization.
 Production verification was not possible. No production credentials or
 production data were accessed or mutated.
 
-## I. UX/accessibility/performance
+## J. UX / accessibility / performance
 
-Automated repository checks are green: lint, typecheck, 19 test files/167
-tests, static build, and E2E with 70 passed/4 skipped. Hosted static smoke is
-green for the main demo. Real-device, screen-reader, Safari, contrast, and
-Core Web Vitals evidence remains external/post-launch.
+Automated repository checks are green: lint, typecheck, 19 test files with 167
+tests, static build, and E2E with 70 passed and 4 skipped. Real-device,
+screen-reader, Safari, contrast, and Core Web Vitals evidence remains
+manual/post-launch and was not fabricated.
 
-## J. SEO / analytics / ads
+## K. SEO / analytics / ads
 
 The hosted demo passed canonical, robots, sitemap, language, route, JavaScript,
-audio, and placeholder checks. Analytics is disabled/unconfigured and remains
-consent-gated. AdSense is not approved/configured; no placeholder publisher
-ID or ads.txt was added. Search Console remains external.
+audio, and placeholder checks. Analytics is
+**DISABLED / UNCONFIGURED** and remains consent-gated. AdSense is
+**NOT APPROVED / NOT ACTIVATED**; no placeholder publisher ID or ads.txt was
+added. Search Console remains an external post-deploy action.
 
-## K. Validation table
+## L. Validation table
 
 | Validation | Result |
 |---|---|
 | npm ci | PASS |
 | lint | PASS |
 | typecheck | PASS |
-| unit/component | 19 files, 167 passed |
-| build | PASS |
-| production readiness | FAIL-CLOSED as expected with missing production values |
-| runtime-AI/provider scan | PASS; zero matches |
-| static repository smoke | PASS |
-| exact-head CI | PASS |
-| exact-head E2E | 70 passed, 4 skipped |
-| exact-head DB integration | 123 passed, 0 failed |
-| hosted read-only smoke | 37 passed, 0 failed on main demo |
-| hosted shared smoke | NOT RUN |
+| Unit/component tests | PASS; 19 files, 167 tests |
+| Build | PASS; 30 static routes |
+| Production readiness | FAIL-CLOSED as expected with missing production values |
+| Runtime AI/provider scan | PASS; zero matches |
+| Static repository smoke | PASS |
+| Exact-head CI | PASS; run 33345378731 |
+| Exact-head E2E | PASS; 70 passed, 4 skipped |
+| Exact-head DB integration | PASS; 123 passed, 0 failed |
+| Hosted read-only smoke | PASS; 37 passed, 0 failed on main demo |
+| Hosted shared smoke | NOT RUN |
+| Production smoke | NOT RUN |
+| Exact production premerge gate | BLOCKED by missing identity, credentials, and backup/recovery proof |
 
-## L. Mutations performed
+## M. Production mutations performed
 
-Production mutations: **None.**
+**NONE**
 
 No production SQL, Auth configuration, hosting secret/variable, analytics,
 AdSense, merge, deployment, rollback, or production-data write was performed.
 
-## M. Rollback state
+## N. Rollback state
 
 | Reference | State |
 |---|---|
 | Previous app ref | Published main b99779bc208c5abd2aa2e67e618927a2db949c42 |
-| Current candidate app ref | PR head 7bf1c93fa39b01e74563e2e0297ba0eac725f4e7 |
-| DB recovery | Owner backup/restore gate not proven; use forward fix, never production db reset |
-| Emergency disable | docs/owner-activation/08_ROLLBACK_AND_EMERGENCY_DISABLE.md |
+| Candidate app ref | PR head 8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 |
+| New deployed app ref | None |
+| DB recovery | Owner backup/restore gate not proven; use forward fix, never a production DB reset |
+| Emergency disable reference | docs/owner-activation/08_ROLLBACK_AND_EMERGENCY_DISABLE.md |
 
-## N. Remaining actions
+## O. Remaining actions
 
-### PRE-MERGE
+### ACCESS / CREDENTIAL
 
-- resend the exact authorization statement including the final period;
-- prove production project identity and credentialed operator;
-- verify exact PR head, checks, reviews, backup/recovery gate, and rollback owner.
-
-### PRE-DEPLOY
-
-- read production migration history and determine the exact additive delta;
-- apply 0001–0016 only after the preflight and backup gates pass;
-- enable Anonymous Sign-Ins and configure Auth Site URL/redirects;
-- set the production origin variable and Supabase secrets without echoing them;
-- verify production RLS/RPC/capability/purge contracts;
-- run controlled shared-flow smoke with disposable resources;
-- merge PR #4 and deploy the exact approved merge SHA.
+- A credentialed operator must authenticate Supabase CLI locally, or configure
+  an equivalent secure operator context, and prove the intended TypingArena
+  production project ref/name/region.
+- Configure the real production site URL, Supabase URL, and anon key through
+  GitHub's secured variable/secret storage outside chat. Do not paste raw
+  secrets into chat.
+- With identity and recovery proof available, rerun migration preflight,
+  activation, controlled shared smoke, the exact premerge gate, merge, deploy,
+  and production smoke.
 
 ### POST-DEPLOY
 
-- run read-only production smoke against the deployed merge SHA;
-- capture deployment run, origin, migration state, and post-deploy shared smoke;
-- record the final rollback reference.
+- Capture the deployed merge SHA, workflow run, origin, migration state,
+  production smoke, shared-flow smoke, and rollback reference.
 
-### POST-LAUNCH VALIDATION
+### POST-LAUNCH
 
-- perform screen-reader, Safari, real-device, contrast, and CWV checks;
-- verify Search Console indexing;
-- activate analytics only with privacy/consent approval;
-- activate AdSense only with publisher/legal approval;
-- establish the strategic measurement baseline.
+- Complete human accessibility/performance checks and Search Console
+  validation.
+- Activate analytics only after consent/privacy approval.
+- Activate AdSense only after publisher/legal approval.
+- Establish the strategic measurement baseline from real consented traffic.
 
-## O. Strategic validation
+## P. Strategic validation
 
 **MEASUREMENT READY**
 
-No real post-launch product data exists in this execution, so no business
-benchmark or retention claim is made.
+The implementation has measurement seams and privacy boundaries, but no real
+post-launch product data exists in this execution. No business benchmark,
+retention, or growth claim is made.
 
-## P. Final next action
+## Q. Final next action
 
-Provide the exact required authorization statement with the terminal period,
-then provide or configure the credentialed production project/operator context
-needed for the environment preflight.
+Configure a secure credentialed Supabase/GitHub production operator context
+outside chat, including the verified production project metadata, then rerun
+the release preflight.

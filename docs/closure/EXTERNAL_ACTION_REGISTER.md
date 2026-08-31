@@ -15,6 +15,15 @@ traffic. They are intentionally not simulated in the repository.
 | EXT-08 | Collect strategic baseline and review retention/cross-mode funnels. | Requires real consented users and a defined observation window. | Dated measurement report using the plan in `docs/analytics/`. | POST-LAUNCH VALIDATION |
 | EXT-09 | Perform human screen-reader, Safari, real-device, contrast, and Core Web Vitals pass. | CI Chromium is not a substitute for those environments. | Accessibility/performance run log with defects triaged. | POST-LAUNCH VALIDATION |
 
+## Current credentialed-operator preflight
+
+As of 2026-08-31, owner authorization is confirmed under the latest
+credentialed operator prompt, but the production project identity, Supabase
+CLI, and secure production credentials are unavailable in this workspace.
+EXT-01 through EXT-04 and EXT-07 therefore remain open. The current disposition
+is **READY FOR CREDENTIALLED OPERATOR — ACCESS BLOCKER ONLY**; no production
+mutation, merge, or deployment was performed.
+
 No secret, publisher approval, hosted result, or strategic metric is fabricated
 by this closure. Detailed prerequisites, commands, mutation boundaries, and
 rollback actions are in `docs/owner-activation/`.

@@ -2,6 +2,14 @@
 
 Captured: 2026-08-31 (Asia/Jakarta), before this documentation-only update.
 
+> Superseding correction (2026-08-31): The latest credentialed operator prompt
+> confirms semantic owner authorization and explicitly says terminal punctuation
+> differences do not invalidate it. The current state is
+> **READY FOR CREDENTIALLED OPERATOR — ACCESS BLOCKER ONLY**. The older
+> head/check values below are historical; use
+> docs/activation/FINAL_OWNER_AUTHORIZED_RELEASE_REPORT.md as the current
+> authoritative report.
+
 ## Authorization gate
 
 The current user message contains:
@@ -12,11 +20,12 @@ The attached prompt requires the exact statement including a final period:
 
 OWNER AUTHORIZATION: production Supabase activation, PR #4 merge, and approved deployment are authorized once all gates in this prompt pass.
 
-Because the terminal period is missing, the exact-match gate is not satisfied
-for this run. Authorization also does not replace proof of the real production
-project, migration delta, backup/recovery method, or credentialed operator.
+The latest attached prompt treats this semantically equivalent authorization as
+confirmed despite the missing terminal period. Authorization does not replace
+proof of the real production project, migration delta, backup/recovery method,
+or credentialed operator.
 
-Current release state: **NOT READY — BLOCKERS REMAIN**
+Historical snapshot state: **SUPERSEDED**
 
 ## Repository and PR baseline
 
