@@ -87,6 +87,7 @@ export default function TranscriptionEngine({
   }, [submitted, startedAt, item.language]);
 
   useEffect(() => {
+    track("task_configured", { task: "transcription", language: item.language, difficulty: item.difficulty });
     track("transcription_start", { language: item.language, exerciseId: item.id });
     const timer = window.setInterval(() => {
       if (firstPlayAtRef.current !== null && !submitted) {
@@ -98,7 +99,7 @@ export default function TranscriptionEngine({
       audioElRef.current?.pause();
       trackerRef.current?.detach();
     };
-  }, [item.id, item.language, submitted]);
+  }, [item.difficulty, item.id, item.language, submitted]);
 
   const attachAudio = useCallback((el: HTMLAudioElement | null) => {
     if (!el || audioElRef.current === el) return;
@@ -216,7 +217,7 @@ export default function TranscriptionEngine({
 
   if (submitted) {
     return (
-      <ResultSection title="Transcription result" className="mx-auto max-w-3xl">
+      <ResultSection title="Transcription result" task="transcription" className="mx-auto max-w-3xl">
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric label="Strict" value={`${submitted.strictScore}%`} />
           <Metric label="Normalized" value={`${submitted.normalizedScore}%`} />

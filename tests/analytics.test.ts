@@ -93,6 +93,9 @@ describe("analytics adapter", () => {
     const analytics = await loadFresh();
     const events: Array<[Parameters<typeof analytics.track>[0], Record<string, unknown>]> = [
       ["typing_test_start", { durationSec: 30, language: "en", mode: "sprint" }],
+      ["route_viewed", {}],
+      ["task_configured", { task: "typing", durationSec: 30 }],
+      ["result_viewed", { task: "typing" }],
       ["dictation_complete", { normalizedScore: 90 }],
       ["multiplayer_start", { code: "ABC123" }],
       ["assignment_completed", { assignmentId: "a1" }],
