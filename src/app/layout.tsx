@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import Header from "@/components/Header";
 import ConsentBanner from "@/components/ConsentBanner";
+import RouteAnalytics from "@/components/RouteAnalytics";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { SITE_NAME, SITE_URL } from "@/lib/config";
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
         <LocaleProvider>
+          <RouteAnalytics />
           <Header />
           <main className="flex-1">{children}</main>
         <footer className="border-t border-zinc-200 bg-white py-8 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">

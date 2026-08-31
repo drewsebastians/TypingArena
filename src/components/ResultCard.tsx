@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import type { TypingResult } from "@/lib/types";
 import Link from "next/link";
 import ErrorHeatmap from "./ErrorHeatmap";
@@ -11,6 +12,16 @@ export default function ResultCard({ result, onNext }: { result: TypingResult; o
     .filter(([, v]) => v.rate > 0.2 && v.exposures >= 3)
     .sort((a, b) => b[1].rate - a[1].rate)
     .slice(0, 5);
+
+  useEffect(() => {
+    track("result_viewed", {
+      task: "typing",
+      mode: result.mode,
+      language: result.language,
+      durationSec: result.durationSec,
+      integrity: result.integrity,
+    });
+  }, [result.durationSec, result.id, result.integrity, result.language, result.mode]);
 
   return (
     <div className="w-full max-w-3xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">

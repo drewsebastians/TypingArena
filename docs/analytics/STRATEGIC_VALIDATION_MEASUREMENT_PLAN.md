@@ -11,17 +11,22 @@ must work when analytics is disabled or unavailable.
 
 | Hypothesis | Primary event(s) | Supporting properties | Decision use |
 | --- | --- | --- | --- |
-| Goal-first entry reduces time to a meaningful exercise | `landing_view`, `goal_first_view`, `goal_selected`, `goal_workspace_ready`, `goal_direct_start` | goal, workspace, route, locale | Compare goal selection and first-task completion by entry route and locale. |
+| Goal-first entry reduces time to a meaningful exercise | `route_viewed`, `landing_view`, `goal_first_view`, `goal_selected`, `goal_workspace_ready`, `goal_direct_start`, `task_configured`, `task_started` | goal, workspace, route, locale, task, mode, language, duration | Compare goal selection and first-task completion by entry route and locale. |
 | The product differentiates through listening, not only visual typing | `task_started`, `task_completed`, `dictation_complete`, `transcription_complete`, `result_next_action_clicked` | task, language, integrity, destination | Measure cross-mode progression and whether typing results lead to audio practice. |
-| Results create a repeat loop | `typing_test_complete`, `dictation_complete`, `transcription_complete`, `next_recommended_start`, `library_clip_started` | mode, score band, clip metadata, destination | Evaluate result-to-next-exercise starts and repeat sessions without requiring an account. |
+| Results create a repeat loop | `result_viewed`, `typing_test_complete`, `dictation_complete`, `transcription_complete`, `next_recommended_start`, `result_next_action_clicked`, `library_clip_started` | task, mode, score band, destination | Evaluate result-to-next-exercise starts and repeat sessions without requiring an account. |
 | Audio feedback helps deliberate listening | `audio_play`, `audio_replay`, `audio_pause`, `audio_seek`, `transcription_replay` | language, exercise id, replay metadata | Compare completion and accuracy by replay behavior; never collect answer text. |
 | Shared competition earns trust only when evidence is accepted | `daily_arena_complete`, `leaderboard_view`, `ranked_submission_rejected`, `session_unranked`, `multiplayer_result_rejected` | integrity, mode, reason, backend state | Monitor rejection rates and honest degradation; never substitute client-claimed WPM. |
 | Creator workflows are useful without exposing contact data | `friend_challenge_created`, `team_created`, `assignment_created`, `custom_test_created`, `assessment_created`, `manage_link_*` | resource type, module count, outcome | Diagnose creator activation and recovery without collecting email, answer, or capability secrets. |
+| Career practice is completed as a multi-module benchmark | `career_start`, `career_complete` | score band, module count | Measure completion without treating Career as certification. |
 
 ## Data contract
 
 - Events are sent through `src/lib/analytics.ts` only after explicit analytics
   consent. A capped local queue supports debugging and export.
+- `route_viewed` records the pathname supplied by the adapter and
+  `task_configured`/`result_viewed` record coarse lifecycle metadata. Query
+  strings, typed content, result identifiers, and secret-bearing URLs are not
+  included.
 - Event properties are allowlisted product metadata. Typed passages, audio
   answers, transcript text, auth UUIDs, capability tokens, and contact details
   are not analytics payloads.

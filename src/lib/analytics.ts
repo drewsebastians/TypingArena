@@ -18,6 +18,7 @@ import { getAnalyticsConsent } from "./history";
 export type EventName =
   | "landing_view"
   | "organic_landing_view"
+  | "route_viewed"
   | "test_start"
   | "typing_test_start"
   | "typing_test_complete"
@@ -41,7 +42,9 @@ export type EventName =
   | "goal_direct_start"
   | "goal_to_route_click"
   | "task_started"
+  | "task_configured"
   | "task_completed"
+  | "result_viewed"
   | "result_next_action_clicked"
   | "nickname_set"
   | "anonymous_identity_created"

@@ -90,6 +90,7 @@ export default function DictationEngine({
   }, [item.language, startedAt, submitted]);
 
   useEffect(() => {
+    track("task_configured", { task: "dictation", language: item.language, difficulty: item.difficulty, speed: item.speed });
     track("dictation_start", { language: item.language, difficulty: item.difficulty, speed: item.speed, exerciseId: item.id });
   }, [item.id, item.language, item.difficulty, item.speed]);
 
@@ -226,7 +227,7 @@ export default function DictationEngine({
 
   if (submitted) {
     return (
-      <ResultSection title="Dictation result" className="w-full max-w-3xl">
+      <ResultSection title="Dictation result" task="dictation" className="w-full max-w-3xl">
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Metric label="Strict" value={`${submitted.strictScore}%`} />
           <Metric label="Normalized" value={`${submitted.normalizedScore}%`} />

@@ -48,6 +48,9 @@ export default function CareerPanel() {
       const res = scoreModules(track, all);
       setResult(res);
       saveCareerResult(res);
+      void import("@/lib/analytics").then(({ track: trackEvent }) =>
+        trackEvent("career_complete", { score: res.score, modules: res.modules.length }),
+      );
     },
     [],
   );

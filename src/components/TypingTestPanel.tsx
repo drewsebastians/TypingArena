@@ -1,7 +1,7 @@
 "use client";
 // Shared typing test workspace used by /, /typing-test*, /tes-mengetik,
 // /data-entry-test, /punctuation-typing-test.
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import TypingEngine from "@/components/TypingEngine";
 import ResultCard from "@/components/ResultCard";
@@ -10,6 +10,7 @@ import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
 import type { CorpusItem, Language, Mode, TypingResult } from "@/lib/types";
 import type { TaskLifecycle } from "@/lib/taskLifecycle";
 import NextStepCard from "@/components/tool/NextStepCard";
+import { track } from "@/lib/analytics";
 
 const DURATIONS = [15, 30, 60, 300] as const;
 type Duration = (typeof DURATIONS)[number];
@@ -61,6 +62,10 @@ export default function TypingTestPanel({
   }, []);
 
   const exerciseId = `${mode}-${language}-${duration}-${sessionSeed}`;
+
+  useEffect(() => {
+    track("task_configured", { task: "typing", language, mode, durationSec: duration });
+  }, [duration, language, mode]);
 
   return (
     <div className="flex flex-col items-center gap-6">
