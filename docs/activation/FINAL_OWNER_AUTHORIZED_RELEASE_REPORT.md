@@ -3,7 +3,8 @@
 Captured: 2026-08-31 (Asia/Jakarta) during the credentialed production
 operator preflight. The repository and PR evidence was re-baselined at
 8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 before this documentation-only
-update.
+update; the final pushed evidence head is
+8e0a101f5d07139da490ceb24ab39eb5a95544ed.
 
 This report follows the latest attached prompt's required A–Q structure. It
 records verified evidence separately from production actions that remain
@@ -36,7 +37,7 @@ production database.
 | Repository | drewsebastians/TypingArena |
 | Branch | codex/goal-first-wave1 |
 | PR | #4, open, non-draft |
-| PR head at rebaseline | 8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 |
+| PR head at final verification | 8e0a101f5d07139da490ceb24ab39eb5a95544ed |
 | Base | main at b99779bc208c5abd2aa2e67e618927a2db949c42 |
 | Ahead/behind | 14 ahead, 0 behind |
 | Mergeability | MERGEABLE; merge state CLEAN |
@@ -46,16 +47,16 @@ production database.
 | Main protection | GitHub API reported main is not protected |
 | Merge result | Not merged; no merge SHA |
 
-Exact-head remote checks at rebaseline:
+Exact-head remote checks at final verification:
 
-- CI: PASS, workflow run 33345378731, job 99348372435.
-- E2E: PASS, workflow run 33345378731, job 99348538976; 70 passed,
+- CI: PASS, workflow run 33351120862, job 99364554461.
+- E2E: PASS, workflow run 33351120862, job 99364754100; 70 passed,
   4 skipped.
-- DB integration: PASS, workflow run 33345378722, job 99348372255; 123
+- DB integration: PASS, workflow run 33351121025, job 99364555028; 123
   passed, 0 failed.
 
-The documentation update itself is non-production evidence. PR metadata and
-checks must be revalidated at the final pushed documentation head.
+The documentation update itself is non-production evidence. No production
+mutation, merge, or deployment followed this verification.
 
 ## D. Credential / environment state
 
@@ -150,9 +151,9 @@ added. Search Console remains an external post-deploy action.
 | Production readiness | FAIL-CLOSED as expected with missing production values |
 | Runtime AI/provider scan | PASS; zero matches |
 | Static repository smoke | PASS |
-| Exact-head CI | PASS; run 33345378731 |
+| Exact-head CI | PASS; run 33351120862 |
 | Exact-head E2E | PASS; 70 passed, 4 skipped |
-| Exact-head DB integration | PASS; 123 passed, 0 failed |
+| Exact-head DB integration | PASS; run 33351121025; 123 passed, 0 failed |
 | Hosted read-only smoke | PASS; 37 passed, 0 failed on main demo |
 | Hosted shared smoke | NOT RUN |
 | Production smoke | NOT RUN |
@@ -170,7 +171,7 @@ AdSense, merge, deployment, rollback, or production-data write was performed.
 | Reference | State |
 |---|---|
 | Previous app ref | Published main b99779bc208c5abd2aa2e67e618927a2db949c42 |
-| Candidate app ref | PR head 8fc6cc15332cc46e5b085b0a2e16b933c6bdf587 |
+| Candidate app ref | PR head 8e0a101f5d07139da490ceb24ab39eb5a95544ed |
 | New deployed app ref | None |
 | DB recovery | Owner backup/restore gate not proven; use forward fix, never a production DB reset |
 | Emergency disable reference | docs/owner-activation/08_ROLLBACK_AND_EMERGENCY_DISABLE.md |
