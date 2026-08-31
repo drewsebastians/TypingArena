@@ -199,6 +199,7 @@ function CandidateFlow({ invite }: { invite: string }) {
       <div className="mt-6">
         {mod.kind.startsWith("typing") && (
           <TypingEngine
+            key={`${mod.kind}-${mod.ref}-${idx}`}
             pool={[pickAssessmentItem(mod.ref)]}
             language="en"
             mode={mod.kind === "typing-numbers" ? "numbers" : "sprint"}
@@ -208,10 +209,10 @@ function CandidateFlow({ invite }: { invite: string }) {
           />
         )}
         {mod.kind === "dictation" && (
-          <DictationEngine item={findDictationClip(mod.ref)!} onComplete={(r: DictationResult) => record(mod, r, r.integrity)} />
+          <DictationEngine key={`${mod.kind}-${mod.ref}-${idx}`} item={findDictationClip(mod.ref)!} onComplete={(r: DictationResult) => record(mod, r, r.integrity)} />
         )}
         {mod.kind === "transcription" && (
-          <TranscriptionEngine item={findTranscriptionClip(mod.ref)!} onComplete={(r: TranscriptionResult) => record(mod, r, r.integrity)} />
+          <TranscriptionEngine key={`${mod.kind}-${mod.ref}-${idx}`} item={findTranscriptionClip(mod.ref)!} onComplete={(r: TranscriptionResult) => record(mod, r, r.integrity)} />
         )}
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
