@@ -4,7 +4,7 @@
 > One arena for typing, dictation, transcription, data entry, listening skill,
 > progression, competition, career practice, teams/classrooms, and user-created challenges.
 
-Free-first • anonymous practice • **no AI inference at runtime** • English + Bahasa Indonesia.
+Free-first • local-first practice • anonymous shared actions • **no AI inference at runtime** • English + Bahasa Indonesia.
 
 Live: https://drewsebastians.github.io/TypingArena/
 
@@ -102,9 +102,15 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
 2. Apply migrations in order: `supabase/migrations/0001_init.sql`,
    `0002_server_authoritative_and_roadmap.sql`, `0003_fix_signup_trigger.sql`,
    `0004_zero_deferred_closure.sql`, `0005_final_closure.sql`,
-   `0006_closure_iv.sql`.
-3. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Enable Email (magic-link) auth; set Site URL to your origin.
+   `0006_closure_iv.sql`, `0007_recursion_and_rate_limits_fix.sql`,
+   `0008_explicit_client_grants.sql`, `0009_assessment_results_read_grant.sql`,
+   `0010_anon_assessment_probe_grant.sql`, `0011_assessments_policy_probe_grant.sql`,
+   `0012_pgcrypto_search_path_fix.sql`, `0013_migrate_conflict_target_fix.sql`,
+   `0014_assignment_admin_policy_fix.sql`, `0015_anonymous_identity_capabilities.sql`,
+   `0016_public_board_privacy.sql`.
+3. Enable Anonymous Sign-Ins in Supabase Auth and set Site URL to your origin.
+   The product does not expose email login, password, or magic-link UI.
+4. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 5. Schedule `select purge_expired();` daily (pg_cron).
 6. Optional: `supabase functions deploy tournament-api` for the Tournament API;
    mint keys by inserting sha256(key) hashes into `public.api_keys`.
@@ -120,14 +126,20 @@ node scripts/db-integration.mjs         # proves RLS, ranked acceptance/rejectio
 `.github/workflows/db-integration.yml` executes these scenarios against a real
 local database in CI — no production credentials involved.
 
-## Cross-device sync (how it works)
+## Local-first persistence + shared actions
 
-Every scored attempt (typing, dictation, transcription, career, custom) is
-queued locally the moment it is saved and flushed through the authoritative RPC
-when signed in. Offline items retry automatically. Full result objects travel
-in `attempts.metrics`, so signing in on a NEW device hydrates identical local
-history (deduped threefold: result id == `client_id`, DB unique index, merge
-check). Streak/skill profile then rebuild from merged history.
+Ordinary typing, dictation, and transcription practice is saved on this device
+and works offline without Supabase. Ranked submissions, Daily, Teams, Custom
+creator management, Assessments, and multiplayer establish a Supabase
+Anonymous Auth identity only when the shared action needs it. The visible
+identity is a nickname; there is no email login, password, or account-sync
+promise in the product UI.
+
+Shared attempt evidence is still queued locally and flushed through the
+authoritative RPC only for explicitly shared actions. Management links for
+Teams, Custom tests, and Assessments carry a high-entropy capability in the
+URL fragment; only its hash is stored server-side, and creators can rotate or
+revoke the link. Local progress and shared data have separate privacy controls.
 
 ## Ranked validation model
 
@@ -167,23 +179,34 @@ state — integration is complete either way.
 
 ## Testing
 
-- **130 unit/component tests** (Vitest): scoring, alignment, corrections,
+- **166 unit/component tests** (Vitest): scoring, alignment, corrections,
   integrity/burst, Jakarta-day math, daily determinism, endless stream,
   playback reducer, streaks, skill matrix, corpus+audio-manifest consistency,
   sync evidence/merge, career bands, season math, sanitization, engine timer
   semantics, paste blocking, versioning.
-- **23 Playwright E2E specs × desktop + mobile**: full-clock sprints, 5-min HUD,
+- **30 Playwright E2E scenarios × desktop + mobile** (60 project cases; 59
+  passes + 1 intentional desktop skip): full-clock sprints, 5-min HUD,
   untouched-text accuracy, static audio resolution (EN/ID .wav), transcription
   flow, honest degradation of shared features offline, library filtering,
   career track list, keyboard reachability, robots/sitemap hygiene.
 - **DB integration suite** (CI): RLS denial, ranked accept/forgery-reject,
   daily date binding, idempotent resubmission, custom-test visibility, team
-  join, complete account deletion — plus team-membership authorization
+  join, anonymous shared identity/capability recovery, local-data deletion —
+  plus team-membership authorization
   regressions, real-attempt assignment binding, invite definition resolution,
   and multiplayer host authority / evidence-derived race results.
 
 ## Documentation index
 
+- `docs/blueprint/README.md` — canonical integrated blueprint and batching-plan index
+- `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v2.md` — canonical strategic/product north star
+- `docs/blueprint/TypingArena_Grand_Batching_Plan_v2.md` — canonical closure execution roadmap
+- `docs/closure/FINAL_READINESS_REPORT.md` — A–L closure handoff and final recommendation
+- `docs/closure/BLUEPRINT_TRACEABILITY_MATRIX.md` — B00–B16 / R0–R16 evidence map
+- `docs/closure/FINAL_SECURITY_REVIEW.md`, `docs/closure/FINAL_UX_ACCESSIBILITY_REVIEW.md`, and `docs/closure/FINAL_SEO_MONETIZATION_REVIEW.md` — final review records
+- `docs/closure/EXTERNAL_ACTION_REGISTER.md` — hosted, owner, provider, and post-launch actions
+- `docs/analytics/STRATEGIC_VALIDATION_MEASUREMENT_PLAN.md` — consented post-launch measurement plan
+- `docs/goal-first/00_WAVE1_BASELINE.md` and `docs/goal-first/01_WAVE1_IMPLEMENTATION_NOTES.md` — Wave 1 evidence
 - `docs/ADR-001-deployment.md` — deployment architecture decision
 - `docs/ADR-002-product-day.md` — Asia/Jakarta product-day boundary
 - `docs/ADR-003-scoring.md` — scoring v2 semantics + integrity model
@@ -191,7 +214,7 @@ state — integration is complete either way.
 - `docs/LICENSES.md` — content/audio rights record (closed: Piper MIT)
 - `docs/api/openapi.yaml` — Tournament API v1 specification
 - `docs/PRODUCTION_HANDOFF.md` — external launch actions (the only remaining work)
-- `BLUEPRINT_COMPLETION_REPORT.md` — final status matrix with evidence
+- `BLUEPRINT_COMPLETION_REPORT.md` — historical pre-closure status matrix
 
 ## Contributing
 

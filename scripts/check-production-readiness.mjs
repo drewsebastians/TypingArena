@@ -81,11 +81,27 @@ if (fs.existsSync(outDir)) {
   };
   scan(outDir);
   if (leaked) process.exit(1);
+  const forbiddenAuthUi = /\b(sign\s*in|sign\s*up|log\s*in|magic\s+link)\b|>\s*account\s*</i;
+  let authUiLeaked = false;
+  const scanAuthUi = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) { scanAuthUi(p); continue; }
+      if (!/\.html$/.test(entry.name)) continue;
+      const content = fs.readFileSync(p, "utf8");
+      if (forbiddenAuthUi.test(content)) {
+        console.error(`legacy auth UI text leaked into ${path.relative(process.cwd(), p)}`);
+        authUiLeaked = true;
+      }
+    }
+  };
+  scanAuthUi(outDir);
+  if (authUiLeaked) process.exit(1);
   for (const f of ["sitemap.xml", "robots.txt"]) {
     if (!fs.existsSync(path.join(outDir, f))) {
       console.error(`missing required static artifact: ${f}`);
       process.exit(1);
     }
   }
-  console.log("static output verified: sitemap + robots present, no placeholder domains");
+  console.log("static output verified: sitemap + robots present, no placeholder domains or legacy auth UI");
 }

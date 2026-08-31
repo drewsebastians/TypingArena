@@ -16,9 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci || npm install
+      - run: npm ci --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -52,9 +52,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci || npm install
+      - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npx playwright test --project=chromium-desktop
+      - run: npx playwright test

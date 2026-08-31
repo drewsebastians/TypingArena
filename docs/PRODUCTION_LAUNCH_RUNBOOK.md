@@ -17,7 +17,7 @@ Current frozen main at time of writing: `936ee1e` → landed line
 | Repository | push access to `drewsebastians/TypingArena`; GitHub Actions enabled |
 | Supabase | account able to create the PRODUCTION project (not a dev copy) |
 | Domain decision | either GitHub Pages project URL (`https://<user>.github.io/<repo>`) or a custom HTTPS origin — this choice controls `NEXT_PUBLIC_SITE_URL`, base path, and DNS steps (§D) |
-| Email inbox | reachable sender for magic-link auth |
+| Anonymous Auth | Anonymous Sign-Ins enabled in the production Supabase project |
 | Secrets scope | only PUBLIC (`NEXT_PUBLIC_*`) values are used by the site build; never place service-role keys in browser-facing configuration |
 
 ## B. Supabase production activation
@@ -28,24 +28,24 @@ Current frozen main at time of writing: `936ee1e` → landed line
 2. Apply migrations from a clean checkout:
    ```bash
    supabase link --project-ref <ref>
-   supabase db push            # applies 0001→0014 additively, in order
+   supabase db push            # applies 0001→0016 additively, in order
    ```
    The chain is additive and rerunnable-from-clean. NEVER run `db reset`
    against production.
-3. Verify: Dashboard → Database → Migrations lists 0001…0014 as applied;
+3. Verify: Dashboard → Database → Migrations lists 0001…0016 as applied;
    Table Editor shows `attempts`, `teams`, `assignments`,
    `assignment_completions`, `assessments`, `assessment_results`, `rooms`,
    `room_results`, `custom_tests`, `friend_challenges(+results)`, `profiles`,
    `api_keys`, `tournaments(+entries)`, `rate_limits`.
-4. Auth → URL configuration: Site URL = production origin;
-   Redirect URLs must include `<SITE_URL>/progress`.
-5. Auth → Emails: enable magic link; keep the default template or brand it.
-6. Scheduled cleanup: enable `pg_cron`, then
+4. Auth → Providers: enable Anonymous Sign-Ins. Auth → URL configuration:
+   Site URL = production origin. Email login and magic-link UI are not part of
+   this product flow.
+5. Scheduled cleanup: enable `pg_cron`, then
    ```sql
    select cron.schedule('typingarena-purge', '17 3 * * *',
      'select public.purge_expired();');
    ```
-7. Tournament API: OPTIONAL. Deploy only if intentionally activating
+6. Tournament API: OPTIONAL. Deploy only if intentionally activating
    (`supabase functions deploy tournament-api`). No UI depends on it.
 
 ## C. GitHub production configuration
@@ -106,11 +106,14 @@ SITE_URL=https://<origin> node scripts/production-smoke.mjs
 Covers all routes, robots/sitemap contract, canonical, placeholders, JS chunk,
 static audio (37 checks; current demo passes 37/37).
 
-Manual, once backend is connected (use dedicated test accounts):
-1. **Typing**: complete a 30s sprint signed-out → result card renders; sign
-   in → history migrates; leaderboard shows the attempt only if ranked.
-2. **Cross-device**: sign in on device B → hydration restores typing/
-   dictation/transcription/Career history without duplicates.
+Manual, once backend is connected (use disposable anonymous test sessions):
+1. **Typing**: complete ordinary practice with the backend unavailable → local
+   result renders; then run a ranked/shared action → anonymous identity is
+   created lazily and the server-authoritative result is accepted or honestly
+   degraded.
+2. **Capability recovery**: create a Team, Custom test, or Assessment → copy
+   the private management link → open it in a clean browser session → the
+   exact resource is recovered, then rotate and revoke the link.
 3. **Dictation/Transcription**: play static WAV, replay, submit → scores
    render; replay metrics recorded.
 4. **Teams round-trip**: A creates team → B joins by code → A publishes a
@@ -122,8 +125,9 @@ Manual, once backend is connected (use dedicated test accounts):
 6. **Multiplayer**: A creates room (host token) → B joins → B's start is
    DENIED server-side → A starts → both see live progress bars → results
    derived from evidence; forged claims rejected.
-7. **Deletion**: test-account deletion removes attempts/profile/memberships
-   (verify via Supabase table view with the test user gone).
+7. **Deletion**: local delete clears device history and queued sync data;
+   shared-data delete removes shared attempts/profile/memberships/resources
+   while leaving the anonymous Auth identity inert (verify in Supabase).
 
 ## I. Rollback
 

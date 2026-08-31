@@ -2,13 +2,14 @@
 // Shared typing test workspace used by /, /typing-test*, /tes-mengetik,
 // /data-entry-test, /punctuation-typing-test.
 import { useCallback, useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import TypingEngine from "@/components/TypingEngine";
 import ResultCard from "@/components/ResultCard";
 import { ENGLISH_CORPUS } from "@/lib/content/english";
 import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
 import type { CorpusItem, Language, Mode, TypingResult } from "@/lib/types";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
+import NextStepCard from "@/components/tool/NextStepCard";
 
 const DURATIONS = [15, 30, 60, 300] as const;
 type Duration = (typeof DURATIONS)[number];
@@ -29,10 +30,16 @@ export default function TypingTestPanel({
   initialLanguage = "en",
   initialDuration = 30,
   initialMode = "sprint",
+  onLifecycleChange,
+  syncPolicy = "local",
+  autoFocus = true,
 }: {
   initialLanguage?: Language;
   initialDuration?: Duration;
   initialMode?: Mode;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  syncPolicy?: "local" | "shared";
+  autoFocus?: boolean;
 }) {
   const params = useSearchParams();
   const [language, setLanguage] = useState<Language>(initialLanguage);
@@ -58,23 +65,23 @@ export default function TypingTestPanel({
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900">
+        <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="test language">
           {(["en", "id"] as const).map((l) => (
-            <button key={l} onClick={() => { setLanguage(l); nextExercise(); }} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={l} onClick={() => { setLanguage(l); nextExercise(); }} aria-pressed={language === l} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold ${language === l ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {l === "en" ? "English" : "Indonesia"}
             </button>
           ))}
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="test duration">
           {DURATIONS.map((d) => (
-            <button key={d} onClick={() => { setDuration(d); nextExercise(); }} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${duration === d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={d} onClick={() => { setDuration(d); nextExercise(); }} aria-pressed={duration === d} className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-semibold ${duration === d ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {d === 300 ? "5 min" : `${d}s`}
             </button>
           ))}
         </div>
         <div className="flex rounded-full border bg-white p-1 dark:bg-zinc-900" role="group" aria-label="content mode">
           {MODES.map((m) => (
-            <button key={m.id} onClick={() => { setMode(m.id); nextExercise(); }} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${mode === m.id ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
+            <button type="button" key={m.id} onClick={() => { setMode(m.id); nextExercise(); }} aria-pressed={mode === m.id} className={`min-h-11 rounded-full px-3 py-1.5 text-xs font-semibold ${mode === m.id ? "bg-black text-white dark:bg-white dark:text-black" : "text-zinc-600"}`}>
               {m.label}
             </button>
           ))}
@@ -90,15 +97,18 @@ export default function TypingTestPanel({
           durationSec={duration}
           exerciseId={exerciseId}
           onComplete={setResult}
+          onLifecycleChange={onLifecycleChange}
+          syncPolicy={syncPolicy}
+          autoFocus={autoFocus}
         />
       ) : (
         <>
           <ResultCard result={result} onNext={nextExercise} />
-          <div className="w-full max-w-3xl rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-            <div className="text-sm font-bold text-amber-900 dark:text-amber-100">How is your listening?</div>
-            <div className="mt-1 text-sm text-amber-800 dark:text-amber-200">Top players train both visual typing and listening-to-text. A 30-second dictation proves it.</div>
-            <Link href="/dictation" className="mt-2 inline-block rounded-full bg-amber-500 px-5 py-2 text-sm font-bold text-white">Go to Dictation</Link>
-          </div>
+          <NextStepCard
+            title="How is your listening?"
+            body="Top players train both visual typing and listening-to-text. A 30-second dictation proves it."
+            steps={[{ href: "/dictation", label: "Go to Dictation" }]}
+          />
         </>
       )}
     </div>

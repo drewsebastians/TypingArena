@@ -23,9 +23,9 @@ jobs:
           supabase db reset
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm install --no-save pg || npm install pg
+      - run: npm ci --no-audit --no-fund
       - name: Run DB integration scenarios
         run: node scripts/db-integration.mjs
         env:

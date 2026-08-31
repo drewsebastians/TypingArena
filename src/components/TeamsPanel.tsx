@@ -2,9 +2,8 @@
 // Teams & Classrooms — create/join rooms, publish REAL assignments, aggregate
 // dashboard. Assignments launch the actual TypingArena engines and completions
 // are bound server-side to real attempt evidence (never an arbitrary score).
-// Member emails never surface; display names/usernames only.
+// Contact details never surface; display names/usernames only.
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import {
   completeAssignment,
   createAssignment,
@@ -14,8 +13,10 @@ import {
   fetchMyTeams,
   fetchTeamCompletions,
   fetchTeamMembers,
+  issueResourceManagementToken,
   joinTeamByCode,
   leaveTeam,
+  revokeResourceManagementToken,
   submitAttempt,
   type AssignmentRecord,
   type AssignmentDefinition,
@@ -38,6 +39,8 @@ import { DICTATION_CLIPS, TRANSCRIPTION_CLIPS, findDictationClip } from "@/lib/c
 import { CAREER_TRACKS, audioEfficiency, scoreModules, typingEfficiency, getTrack } from "@/lib/career";
 import type { CareerAssessmentResult, CareerModule, ModuleScore } from "@/lib/career";
 import type { CorpusItem, DictationResult, Language, TranscriptionResult, TypingResult } from "@/lib/types";
+import { parseManageFragment } from "@/lib/resourceAccess";
+import { recoverResourceManagement } from "@/lib/remote";
 
 /** Single-exercise kinds plus full career tracks — all executable end-to-end. */
 const ASSIGNMENT_KINDS = ["sprint", "copy-pro", "numbers", "punctuation", "dictation", "transcription", "career"] as const;
@@ -52,11 +55,12 @@ function corpusFor(language: Language): CorpusItem[] {
 
 export default function TeamsPanel() {
   const [teams, setTeams] = useState<Array<TeamRecord & { role: string }>>([]);
-  const [state, setState] = useState<"loading" | "ready" | "unconfigured" | "signed-out">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "unconfigured">("loading");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [managementLinks, setManagementLinks] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!IS_REMOTE_CONFIGURED) {
@@ -74,18 +78,30 @@ export default function TeamsPanel() {
   }, []);
 
   useEffect(() => {
-    void import("@/lib/remote").then(({ getCurrentUser }) =>
-      getCurrentUser().then((u) => {
-        if (!u && IS_REMOTE_CONFIGURED) setState("signed-out");
-      }),
-    );
-    void refresh();
+    const manageId = new URLSearchParams(window.location.search).get("manage");
+    const token = parseManageFragment(window.location.hash);
+    if (manageId && token) {
+      setState("ready");
+      setError("Recovering workspace…");
+      void recoverResourceManagement("team", manageId, token)
+        .then(() => {
+          track("manage_link_recovered", { resourceType: "team" });
+          window.history.replaceState({}, "", window.location.pathname);
+          setError(null);
+          void refresh();
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : "Management link is invalid or expired");
+          setState("ready");
+        });
+    } else {
+      void refresh();
+    }
   }, [refresh]);
 
   if (state === "unconfigured") {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("teams.title")}</h1>
         <p className="mt-3 rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")}</p>
       </div>
     );
@@ -97,17 +113,6 @@ export default function TeamsPanel() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">{t("teams.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        For workplace teams, study groups and classrooms. Only public usernames are visible — never emails. Members see their own detailed results; admins see aggregates.
-      </p>
-
-      {state === "signed-out" && (
-        <p className="mt-3 text-sm text-zinc-500">
-          <Link href="/progress" className="underline">{t("common.signInFirst")}</Link>
-        </p>
-      )}
-
       {state === "ready" && (
         <>
           <div className="mt-6 flex flex-wrap items-end gap-2">
@@ -116,24 +121,29 @@ export default function TeamsPanel() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Data Entry Cohort A" maxLength={60} className="mt-1 block w-64 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
             </label>
             <button
+              type="button"
               onClick={async () => {
                 try {
-                  await createTeam(sanitizeTitle(name));
+                  const created = await createTeam(sanitizeTitle(name));
+                  const management = await issueResourceManagementToken("team", created.id);
+                  setManagementLinks((prev) => ({ ...prev, [created.id]: `${window.location.origin}${window.location.pathname}?manage=${created.id}#manage=${management.token}` }));
                   setName("");
                   await refresh();
                   track("team_created", {});
+                  track("manage_link_created", { resourceType: "team" });
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "Create failed");
                 }
               }}
               disabled={name.trim().length < 2}
-              className="rounded-full bg-black px-5 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+              className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
             >
               {t("teams.createTeam")}
             </button>
             <div className="ml-auto flex items-center gap-2">
               <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="JOIN CODE" aria-label="team code" className="w-36 rounded-lg border px-3 py-2 font-mono uppercase dark:bg-zinc-800" />
               <button
+                type="button"
                 onClick={async () => {
                   try {
                     await joinTeamByCode(code);
@@ -146,7 +156,7 @@ export default function TeamsPanel() {
                   }
                 }}
                 disabled={code.length < 6}
-                className="rounded-full border px-5 py-2 text-sm font-semibold disabled:opacity-40"
+                className="min-h-11 rounded-full border px-5 py-2 text-sm font-semibold disabled:opacity-40"
               >
                 {t("teams.joinByCode")}
               </button>
@@ -161,12 +171,50 @@ export default function TeamsPanel() {
                 <span className="flex-1 font-semibold">{sanitizeTitle(tm.name)}</span>
                 <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-800">{tm.join_code}</span>
                 <span className={`text-xs font-bold uppercase ${tm.role === "owner" ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-500"}`}>{tm.role}</span>
-                <button onClick={() => setActiveId(tm.id)} className="rounded-full border px-4 py-1.5 text-xs font-semibold">Open room →</button>
+                <button type="button" onClick={() => setActiveId(tm.id)} className="min-h-11 rounded-full border px-4 py-1.5 text-xs font-semibold">Open room →</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const management = await issueResourceManagementToken("team", tm.id);
+                      const link = `${window.location.origin}${window.location.pathname}?manage=${tm.id}#manage=${management.token}`;
+                      setManagementLinks((prev) => ({ ...prev, [tm.id]: link }));
+                      await navigator.clipboard.writeText(link);
+                      track("manage_link_created", { resourceType: "team" });
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not create management link");
+                    }
+                  }}
+                  className="min-h-11 rounded-full border px-3 py-1.5 text-xs"
+                >
+                  Copy management link
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!window.confirm("Revoke active management links for this team?")) return;
+                    try {
+                      await revokeResourceManagementToken("team", tm.id);
+                      setManagementLinks((prev) => {
+                        const next = { ...prev };
+                        delete next[tm.id];
+                        return next;
+                      });
+                      track("manage_link_revoked", { resourceType: "team" });
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not revoke management links");
+                    }
+                  }}
+                  className="min-h-11 text-xs text-red-600 underline"
+                >
+                  Revoke links
+                </button>
                 {tm.role === "owner" ? (
-                  <button onClick={async () => { if (!window.confirm(`Delete team "${tm.name}" and all its assignments?`)) return; await deleteTeamAsOwner(tm.id); await refresh(); }} className="text-xs text-red-600 underline">Delete</button>
+                  <button type="button" onClick={async () => { if (!window.confirm(`Delete team "${tm.name}" and all its assignments?`)) return; await deleteTeamAsOwner(tm.id); await refresh(); }} className="min-h-11 text-xs text-red-600 underline">Delete</button>
                 ) : (
-                  <button onClick={async () => { await leaveTeam(tm.id); await refresh(); }} className="text-xs text-red-600 underline">Leave</button>
-                )}
+                  <button type="button" onClick={async () => { await leaveTeam(tm.id); await refresh(); }} className="min-h-11 text-xs text-red-600 underline">Leave</button>
+              )}
+              {managementLinks[tm.id] && <p className="w-full break-all rounded bg-amber-50 p-2 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLinks[tm.id]}</p>}
               </div>
             ))}
           </div>
@@ -282,7 +330,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
     const dur = Math.max(15, Math.min(300, Number(def.durationSec ?? 30)));
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <button onClick={() => setRunningId(null)} className="mb-4 text-sm underline">← Back to room</button>
+        <button type="button" onClick={() => setRunningId(null)} className="mb-4 min-h-11 text-sm underline">← Back to room</button>
         <p className="text-center text-xs uppercase tracking-widest text-zinc-500">
           Assignment · {running.title}
         </p>
@@ -326,7 +374,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-4 text-sm underline">← All teams</button>
+      <button type="button" onClick={onBack} className="mb-4 min-h-11 text-sm underline">← All teams</button>
 
       {/* Dashboard aggregation */}
       <h2 className="font-bold">Room dashboard</h2>
@@ -343,30 +391,30 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
         <p className="mt-1 text-xs text-zinc-500">Members run the actual exercise here; their completion score is computed from the real result.</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Week 3 — numeric records" aria-label="assignment title" className="w-56 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
-          <select value={kind} onChange={(e) => setKind(e.target.value as AssignmentKind)} aria-label="assignment kind" className="rounded-lg border px-2 py-2 text-sm capitalize dark:bg-zinc-800">
+          <select value={kind} onChange={(e) => setKind(e.target.value as AssignmentKind)} aria-label="assignment kind" className="min-h-11 rounded-lg border px-2 py-2 text-sm capitalize dark:bg-zinc-800">
             {ASSIGNMENT_KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
           </select>
           {kind === "career" ? (
-            <select value={careerTrackId} onChange={(e) => setCareerTrackId(e.target.value)} aria-label="career track" className="max-w-[16rem] rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
+            <select value={careerTrackId} onChange={(e) => setCareerTrackId(e.target.value)} aria-label="career track" className="min-h-11 max-w-[16rem] rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
               {CAREER_TRACKS.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
           ) : TYPING_KINDS.has(kind) ? (
             <>
-              <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} aria-label="assignment language" className="rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
+              <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} aria-label="assignment language" className="min-h-11 rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
                 <option value="en">English</option>
                 <option value="id">Indonesia</option>
               </select>
               <label className="text-xs text-zinc-500">
                 Duration
-                <input type="number" min={15} max={300} step={15} value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))} aria-label="assignment duration seconds" className="ml-1 w-20 rounded-lg border px-2 py-1.5 text-sm dark:bg-zinc-800" />
+                <input type="number" min={15} max={300} step={15} value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))} aria-label="assignment duration seconds" className="ml-1 min-h-11 w-20 rounded-lg border px-2 py-1.5 text-sm dark:bg-zinc-800" />
               </label>
             </>
           ) : (
-            <select value={clipRef} onChange={(e) => setClipRef(e.target.value)} aria-label="audio clip" className="max-w-[16rem] rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
+            <select value={clipRef} onChange={(e) => setClipRef(e.target.value)} aria-label="audio clip" className="min-h-11 max-w-[16rem] rounded-lg border px-2 py-2 text-sm dark:bg-zinc-800">
               {(kind === "dictation" ? DICTATION_CLIPS : TRANSCRIPTION_CLIPS).map((c) => (
                 <option key={c.id} value={c.id}>{c.id} ({c.language})</option>
               ))}
@@ -374,9 +422,10 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
           )}
           <label className="text-xs text-zinc-500">
             Due
-            <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} aria-label="due date" className="ml-1 rounded-lg border px-2 py-1.5 text-sm dark:bg-zinc-800" />
+            <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} aria-label="due date" className="ml-1 min-h-11 rounded-lg border px-2 py-1.5 text-sm dark:bg-zinc-800" />
           </label>
           <button
+            type="button"
             onClick={async () => {
               try {
                 const definition: AssignmentDefinition = kind === "career"
@@ -399,7 +448,7 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
               }
             }}
             disabled={title.trim().length < 2 || (!TYPING_KINDS.has(kind) && !clipRef)}
-            className="rounded-full bg-black px-5 py-2 text-xs font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+            className="min-h-11 rounded-full bg-black px-5 py-2 text-xs font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
           >
             Publish
           </button>
@@ -429,9 +478,10 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
                 </div>
                 {!isDone ? (
                   <button
+                    type="button"
                     onClick={() => setRunningId(a.id)}
                     disabled={busy}
-                    className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-black"
+                    className="min-h-11 rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-black"
                   >
                     Start assignment →
                   </button>
@@ -506,7 +556,7 @@ function CareerAssignmentRunner({ assignment, onFinish, onBack }: {
   if (!track) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+        <button type="button" onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
         <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">This assignment references an unknown career track.</p>
       </div>
     );
@@ -547,7 +597,7 @@ function CareerAssignmentRunner({ assignment, onFinish, onBack }: {
   const mod: CareerModule | undefined = track.modules[idx];
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
+      <button type="button" onClick={onBack} className="mb-4 text-sm underline">← Back to room</button>
       <p className="text-center text-xs uppercase tracking-widest text-zinc-500">
         {assignment.title} · {track.name} · module {Math.min(idx + 1, track.modules.length)}/{track.modules.length}
       </p>

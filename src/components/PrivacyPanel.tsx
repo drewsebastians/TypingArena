@@ -1,12 +1,15 @@
 "use client";
-// Privacy controls — local data export + deletion.
+
 import { useState } from "react";
 import { clearAllLocalData, exportAllResults } from "@/lib/history";
-import { clearQueue } from "@/lib/analytics";
-import { track } from "@/lib/analytics";
+import { clearQueue as clearSyncQueue, pendingSyncCount } from "@/lib/sync";
+import { deleteSharedData } from "@/lib/remote";
+import { IS_REMOTE_CONFIGURED } from "@/lib/config";
+import { clearQueue as clearAnalyticsQueue, track } from "@/lib/analytics";
 
 export default function PrivacyPanel({ onDeleted }: { onDeleted: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const download = () => {
     const data = JSON.stringify(exportAllResults(), null, 2);
@@ -19,25 +22,39 @@ export default function PrivacyPanel({ onDeleted }: { onDeleted: () => void }) {
     URL.revokeObjectURL(url);
   };
 
+  const deleteLocal = () => {
+    if (!window.confirm("Delete all TypingArena practice data stored on this device?")) return;
+    clearAllLocalData();
+    clearSyncQueue();
+    clearAnalyticsQueue();
+    onDeleted();
+    setMsg("Local data deleted.");
+    track("history_deleted", { scope: "local" });
+  };
+
+  const deleteShared = async () => {
+    if (!window.confirm("Delete this device identity's shared data? This permanently removes shared attempts and results, team memberships, owned Teams, Custom Tests, Assessments, API keys, profile/nickname, and management capabilities. Friend challenges you created are anonymized for other participants. Local practice history and the anonymous auth record are not deleted. This cannot be undone.")) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await deleteSharedData();
+      setMsg("Shared data deleted from this device identity.");
+      track("shared_data_deleted", {});
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Shared data could not be deleted.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
-      <h2 className="text-sm font-bold">Privacy</h2>
-      <p className="mt-1 text-xs text-zinc-500">Your history lives in this browser. Export it anytime, or delete everything from this device.</p>
+    <div className="mt-6 rounded-2xl border bg-white p-4 dark:bg-zinc-900">
+      <h2 className="text-sm font-bold">Privacy & data</h2>
+      <p className="mt-1 text-xs text-zinc-500">Practice history lives in this browser. Export it anytime, or remove local and shared data separately.</p>
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        <button onClick={download} className="rounded-full border px-4 py-1.5">Export my data (JSON)</button>
-        <button
-          onClick={() => {
-            if (!window.confirm("Delete ALL local TypingArena data (history, streak, username)?")) return;
-            clearAllLocalData();
-            clearQueue();
-            onDeleted();
-            setMsg("Local data deleted.");
-            track("history_deleted", { scope: "local" });
-          }}
-          className="rounded-full border border-red-300 px-4 py-1.5 text-red-700"
-        >
-          Delete all local data
-        </button>
+        <button type="button" onClick={download} className="min-h-11 rounded-full border px-4 py-1.5">Export practice data (JSON)</button>
+        <button type="button" onClick={deleteLocal} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700">Delete local data</button>
+        {IS_REMOTE_CONFIGURED && <button type="button" disabled={busy || pendingSyncCount() > 0} onClick={() => void deleteShared()} className="min-h-11 rounded-full border border-red-300 px-4 py-1.5 text-red-700 disabled:opacity-50">{busy ? "Deleting…" : "Delete shared data"}</button>}
       </div>
       {msg && <p role="status" className="mt-2 text-xs text-emerald-700">{msg}</p>}
     </div>

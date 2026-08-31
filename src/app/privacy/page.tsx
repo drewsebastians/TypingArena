@@ -1,71 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/config";
+import { routeMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy",
-  description:
-    "How TypingArena handles your data: anonymous-first practice, optional accounts, local history you control, consent-based analytics, and deletion tools.",
-};
+export const metadata: Metadata = routeMetadata(
+  "/privacy",
+  "Privacy",
+  "How TypingArena handles local practice data, opt-in shared features, consent-based analytics, and deletion.",
+);
 
 const sections: Array<{ h: string; body: React.ReactNode }> = [
   {
-    h: "Anonymous first",
-    body: (
-      <p>
-        You can complete every test without an account. Results from anonymous sessions are stored only in your own browser
-        (localStorage) and never leave your device unless you choose to sign in.
-      </p>
-    ),
+    h: "Practice stays local",
+    body: <p>You can complete typing, dictation, transcription, and Career practice without creating a contact identity. Scores, error summaries, timestamps, streaks, and your optional nickname stay in this browser unless you explicitly use a shared feature.</p>,
   },
   {
-    h: "What we store locally",
-    body: (
-      <>
-        <p>Test results (scores, error profiles, timestamps), your streak, your chosen display name, and your analytics consent choice.</p>
-        <p className="mt-2">We do not store raw keystroke streams — only summarized per-key error statistics needed to power skill analysis.</p>
-      </>
-    ),
+    h: "Shared features are opt-in",
+    body: <p>Publishing a ranked attempt, entering Daily Arena, creating a team, custom test, assessment, or multiplayer room starts an anonymous Supabase session only when needed. Shared authorization still uses the authenticated role, RLS, and server-authoritative RPCs. No contact details or credentials are requested.</p>,
   },
   {
-    h: "Optional accounts",
-    body: (
-      <p>
-        Accounts use passwordless email links. Your email is private and is never displayed; leaderboards show only the public username
-        you choose. Signing in lets you sync history across devices and enter ranked boards.
-      </p>
-    ),
+    h: "Nicknames and management links",
+    body: <><p>Leaderboards and team rosters show a nickname, never contact details or an auth UUID. Team, custom-test, and assessment management links contain a high-entropy secret in the URL fragment. The database stores only a SHA-256 digest, and creating a new link revokes the previous one.</p><p className="mt-2">Treat a management link like a key: anyone who has it can attempt recovery for that specific resource.</p></>,
   },
   {
-    h: "Analytics & ads",
-    body: (
-      <p>
-        Product analytics load only after you explicitly allow them (banner or Privacy choice), and are used to understand feature usage —
-        no data sale, no ad-tech tracking pixels before consent. Ad slots are reserved spaces on discovery and result pages; they never
-        appear inside an active test and nothing autoplays audio.
-      </p>
-    ),
+    h: "Analytics and ads",
+    body: <p>Product analytics load only after you explicitly allow them. Events contain feature metadata, not typed text, answers, contact details, auth UUIDs, or capability tokens. Ad slots are reserved outside active exercises and never autoplay audio.</p>,
   },
   {
-    h: "Deleting your data",
-    body: (
-      <>
-        <p>
-          Use <Link href="/progress" className="underline">Progress → Privacy</Link> to export or delete all local data with one click, or
-          delete all account data if signed in.
-        </p>
-        <p className="mt-2">Friend challenge entries expire automatically after 30 days.</p>
-      </>
-    ),
+    h: "Exporting and deleting",
+    body: <><p>Use <Link href="/progress" className="underline">Progress → Privacy</Link> to export or delete local practice data. The same panel can delete shared results and workspaces owned by the current device identity; it does not delete the auth record itself, so the action remains a product-data deletion rather than an identity-administration flow.</p><p className="mt-2">Friend challenge entries expire automatically after 30 days.</p></>,
   },
   {
     h: "Audio content",
-    body: (
-      <p>
-        Dictation and transcription clips are static files generated during development from original narrations written for {SITE_NAME}.
-        Source and license records ship with each clip (see the repository&apos;s docs/LICENSES.md).
-      </p>
-    ),
+    body: <p>Dictation and transcription clips are static files generated during development from original narrations written for {SITE_NAME}. Source and license records ship with each clip (see the repository&apos;s docs/LICENSES.md).</p>,
   },
 ];
 
@@ -73,16 +40,9 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-3xl font-black">Privacy</h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Short version: practice anonymously, your data stays yours, accounts are optional, analytics need consent, deletion is real.
-      </p>
+      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Short version: practice locally, choose shared features when useful, use a nickname, and delete what you no longer want stored.</p>
       <div className="mt-6 space-y-6">
-        {sections.map((s) => (
-          <section key={s.h}>
-            <h2 className="font-bold">{s.h}</h2>
-            <div className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{s.body}</div>
-          </section>
-        ))}
+        {sections.map((section) => <section key={section.h}><h2 className="font-bold">{section.h}</h2><div className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{section.body}</div></section>)}
       </div>
     </div>
   );

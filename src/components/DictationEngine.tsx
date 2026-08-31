@@ -26,6 +26,8 @@ import { BASE_PATH } from "@/lib/config";
 import { saveDictationResult } from "@/lib/history";
 import { audioEvidence, queueAttempt } from "@/lib/sync";
 import { track } from "@/lib/analytics";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
+import ResultSection from "@/components/tool/ResultSection";
 
 function newId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -37,12 +39,16 @@ export default function DictationEngine({
   noiseLevel,
   exerciseId,
   onComplete,
+  onLifecycleChange,
+  syncPolicy = "local",
 }: {
   item: DictationItem;
   noiseLevel?: string;
   /** Overrides the clip id in the persisted result (e.g. assignment binding). */
   exerciseId?: string;
   onComplete?: (r: DictationResult) => void;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  syncPolicy?: "local" | "shared";
 }) {
   const [typed, setTyped] = useState("");
   const [playing, setPlaying] = useState(false);
@@ -55,6 +61,33 @@ export default function DictationEngine({
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const trackerRef = useRef<PlaybackTracker | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const onLifecycleRef = useRef(onLifecycleChange);
+
+  useEffect(() => {
+    onLifecycleRef.current = onLifecycleChange;
+  }, [onLifecycleChange]);
+
+  useEffect(() => {
+    onLifecycleRef.current?.("ready");
+    return () => {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("idle");
+    };
+  }, [item.id]);
+
+  useEffect(() => {
+    if (submitted) {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("result");
+    } else if (startedAt !== null) {
+      document.documentElement.setAttribute("data-exercise-active", "");
+      onLifecycleRef.current?.("active");
+      track("task_started", { task: "dictation", language: item.language });
+    } else {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("ready");
+    }
+  }, [item.language, startedAt, submitted]);
 
   useEffect(() => {
     track("dictation_start", { language: item.language, difficulty: item.difficulty, speed: item.speed, exerciseId: item.id });
@@ -163,7 +196,8 @@ export default function DictationEngine({
       timestamp: now,
     };
     saveDictationResult(res);
-    void queueAttempt(audioEvidence(res, "dictation"));
+    onLifecycleRef.current?.("completing");
+    if (syncPolicy === "shared") void queueAttempt(audioEvidence(res, "dictation"));
     setSubmitted(res);
     onComplete?.(res);
     audioElRef.current?.pause();
@@ -173,6 +207,7 @@ export default function DictationEngine({
       replayCount: res.playback.replayCount, language: item.language,
       integrity,
     });
+    track("task_completed", { task: "dictation", language: item.language, integrity });
     if (pasteFlag) track("paste_detected", { source: "dictation" });
     if (integrity !== "ranked") track("session_unranked", { reason: reasons.join(",") });
   };
@@ -191,8 +226,7 @@ export default function DictationEngine({
 
   if (submitted) {
     return (
-      <div className="w-full max-w-3xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-lg font-bold">Dictation Result</h3>
+      <ResultSection title="Dictation result" className="w-full max-w-3xl">
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Metric label="Strict" value={`${submitted.strictScore}%`} />
           <Metric label="Normalized" value={`${submitted.normalizedScore}%`} />
@@ -214,8 +248,8 @@ export default function DictationEngine({
           <div className="mt-2 font-mono text-sm"><span className="text-zinc-500">Reference:</span> {item.transcript}</div>
           <div className="mt-1 font-mono text-sm"><span className="text-zinc-500">You typed:</span> {typed || <em>(empty)</em>}</div>
         </details>
-        <button onClick={() => window.location.reload()} className="mt-4 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">Next clip ↻</button>
-      </div>
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 min-h-11 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">Next clip ↻</button>
+      </ResultSection>
     );
   }
 
@@ -243,6 +277,7 @@ export default function DictationEngine({
           onSeeked={syncPlayback}
         />
         <button
+          type="button"
           onClick={handlePlayPause}
           disabled={audioFailed && process.env.NODE_ENV !== "development"}
           className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow ${playing ? "bg-zinc-300 text-zinc-700" : "bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black"}`}
@@ -250,14 +285,14 @@ export default function DictationEngine({
         >
           {playing ? "⏸ Pause" : "▶ Play"}
         </button>
-        <button onClick={handleReplayFromStart} disabled={!startedAt} className="rounded-full border bg-white px-4 py-2.5 text-xs font-semibold dark:bg-zinc-900 disabled:opacity-40" aria-label="replay audio from start">
+        <button type="button" onClick={handleReplayFromStart} disabled={!startedAt} className="min-h-11 rounded-full border bg-white px-4 py-2.5 text-xs font-semibold dark:bg-zinc-900 disabled:opacity-40" aria-label="replay audio from start">
           ↻ Replay
         </button>
         {audioFailed && (
           <span className="text-xs text-amber-600">
             Static audio failed to load.
             {process.env.NODE_ENV !== "production" ? (
-              <button onClick={devFallbackSpeak} className="ml-1 underline">[dev fallback]</button>
+              <button type="button" onClick={devFallbackSpeak} className="ml-1 min-h-11 underline">[dev fallback]</button>
             ) : (
               " Please reload; if it persists the asset is missing from this deployment."
             )}
@@ -280,8 +315,8 @@ export default function DictationEngine({
         className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-3 font-mono text-base dark:border-zinc-700 dark:bg-zinc-800"
       />
       <div className="mt-3 flex items-center gap-2">
-        <button onClick={handleSubmit} disabled={!typed.trim()} className="rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">Submit</button>
-        <button onClick={() => { setTyped(""); inputRef.current?.focus(); }} className="rounded-full border px-4 py-2 text-sm">Clear</button>
+        <button type="button" onClick={handleSubmit} disabled={!typed.trim()} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">Submit</button>
+        <button type="button" onClick={() => { setTyped(""); inputRef.current?.focus(); }} className="min-h-11 rounded-full border px-4 py-2 text-sm">Clear</button>
         {pasteFlag && <span className="text-xs text-red-600">Paste blocked — attempt will be flagged.</span>}
       </div>
 

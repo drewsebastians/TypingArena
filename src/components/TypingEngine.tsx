@@ -24,6 +24,7 @@ import { saveTypingResult } from "@/lib/history";
 import { queueAttempt, typingEvidence } from "@/lib/sync";
 import { track } from "@/lib/analytics";
 import type { BigramStat, CorpusItem, Language, Mode, PerKeyStat, TypingResult } from "@/lib/types";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
 
 export interface TypingEngineProps {
   /** Pool of reviewed corpus items used to build the continuous stream. */
@@ -36,6 +37,11 @@ export interface TypingEngineProps {
   exerciseVersion?: string;
   challengeDate?: string;
   onComplete?: (r: TypingResult) => void;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  /** Ordinary practice is local-first. Shared callers opt in explicitly. */
+  syncPolicy?: "local" | "shared";
+  /** Avoid stealing scroll/focus when the engine is embedded below discovery UI. */
+  autoFocus?: boolean;
   /**
    * Advisory progress signal for observers (e.g. multiplayer race UI).
    * Throttled to ~3 updates/sec; never fires after completion. NOT part of
@@ -52,6 +58,17 @@ function newId(): string {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+type KeyClass = "space" | "digit" | "letter" | "punctuation" | "other";
+
+/** Analytics needs error shape, never the actual expected/typed characters. */
+function keyClass(key: string): KeyClass {
+  if (key === " ") return "space";
+  if (/^[0-9]$/.test(key)) return "digit";
+  if (/^\p{L}$/u.test(key)) return "letter";
+  if (/^\p{P}$/u.test(key) || /^\p{S}$/u.test(key)) return "punctuation";
+  return "other";
+}
+
 interface EntryView {
   expected: string;
   typed: string;
@@ -66,6 +83,9 @@ export default function TypingEngine({
   exerciseVersion = "v2",
   challengeDate,
   onComplete,
+  onLifecycleChange,
+  syncPolicy = "local",
+  autoFocus = true,
   onProgress,
 }: TypingEngineProps) {
   const [entries, setEntries] = useState<EntryView[]>([]);
@@ -89,9 +109,18 @@ export default function TypingEngine({
   const lastFocusSignalRef = useRef(0);
   const lastProgressSentRef = useRef(0);
   const onProgressRef = useRef(onProgress);
+  const onLifecycleRef = useRef(onLifecycleChange);
   useEffect(() => {
     onProgressRef.current = onProgress;
   }, [onProgress]);
+  useEffect(() => {
+    onLifecycleRef.current = onLifecycleChange;
+  }, [onLifecycleChange]);
+
+  useEffect(() => {
+    onLifecycleRef.current?.("ready");
+    return () => onLifecycleRef.current?.("idle");
+  }, [exerciseId]);
 
   // Deterministic per-session stream (stable identity across renders).
   const [stream] = useState(
@@ -101,6 +130,7 @@ export default function TypingEngine({
   const finish = useCallback(() => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    onLifecycleRef.current?.("completing");
     setFinished(true);
     const elapsed = Math.min(durationSec * 1000, Date.now() - (startAtRef.current ?? Date.now()));
     setElapsedMs(elapsed);
@@ -161,9 +191,10 @@ export default function TypingEngine({
       timestamp: Date.now(),
     };
     saveTypingResult(result);
+    onLifecycleRef.current?.("result");
     onComplete?.(result);
-    // Cross-device sync: queued locally, flushed via server-authoritative RPC.
-    void queueAttempt(typingEvidence(result));
+    // Shared callers opt in; ordinary practice stays entirely local.
+    if (syncPolicy === "shared") void queueAttempt(typingEvidence(result));
 
     track("typing_test_complete", {
       wpm: result.grossWpm,
@@ -173,10 +204,11 @@ export default function TypingEngine({
       mode,
       integrity: result.integrity,
     });
+    track("task_completed", { task: "typing", mode, language, integrity: result.integrity });
     if (result.integrity !== "ranked") track("session_unranked", { reason: verdict.reasons.join(",") });
     if (pasteFlag) track("paste_detected", { source: "typing", durationSec });
     if (burstDetected) track("suspicious_burst_detected", { wpm: result.grossWpm });
-  }, [durationSec, language, mode, exerciseId, exerciseVersion, challengeDate, onComplete, pasteFlag]);
+  }, [durationSec, language, mode, exerciseId, exerciseVersion, challengeDate, onComplete, pasteFlag, syncPolicy]);
 
   // Active-exercise focus: secondary chrome visually recedes
   useEffect(() => {
@@ -265,8 +297,10 @@ export default function TypingEngine({
       startedRef.current = true;
       startAtRef.current = wallNow;
       setStarted(true);
+      onLifecycleRef.current?.("active");
       track("typing_test_start", { durationSec, language, mode, exerciseId });
       track("test_start", { type: "typing", durationSec, mode });
+      track("task_started", { task: "typing", mode, language });
     }
     const time = wallNow - startAtRef.current!;
     const expected = stream.charAt(entries.length);
@@ -278,7 +312,7 @@ export default function TypingEngine({
     accumulateBigram(bigramRef.current, prevTop ? prevTop.expected : null, { expected, typed }, prevTop);
     keystrokeTimesRef.current.push(time);
     if (typed !== expected) {
-      track("keystroke_error", { expected: expected === " " ? "space" : expected, got: typed === " " ? "space" : typed });
+      track("keystroke_error", { expectedClass: keyClass(expected), typedClass: keyClass(typed) });
     }
     setEntries(trackerRef.current.finalEntries().map((x) => ({ expected: x.expected, typed: x.typed })));
   };
@@ -305,12 +339,13 @@ export default function TypingEngine({
     setElapsedMs(0);
     setFocusLost(0);
     setPasteFlag(false);
+    onLifecycleRef.current?.("ready");
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   // ---- rendering (pure, from state) ---------------------------------------
   const pos = entries.length;
@@ -346,7 +381,7 @@ export default function TypingEngine({
         <div className="flex items-center gap-2">
           {pasteFlag && <span role="status" className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">paste blocked — flagged</span>}
           {focusLost > 0 && <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">focus lost ×{focusLost}</span>}
-          <button onClick={reset} className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Restart</button>
+          <button type="button" onClick={reset} className="min-h-11 rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Restart</button>
         </div>
       </div>
 

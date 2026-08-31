@@ -24,9 +24,11 @@ import {
   type FriendChallengeRecord,
   type FriendChallengeResultRow,
 } from "@/lib/remote";
-import { getUsername } from "@/lib/history";
+import { getNickname } from "@/lib/history";
 import { track } from "@/lib/analytics";
 import type { CorpusItem, Language, TypingResult } from "@/lib/types";
+import FeaturePageShell from "@/components/FeaturePageShell";
+import { FEATURE_COPY } from "@/components/pageCopy";
 
 function findCorpusItem(id: string): CorpusItem | undefined {
   return [...ENGLISH_CORPUS, ...INDONESIAN_CORPUS].find((c) => c.id === id);
@@ -45,11 +47,6 @@ function FriendsInner() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">Friend Challenges</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Send a link — your friend gets <em>exactly</em> the same passage on their own device, then you compare scores.
-      </p>
-
       {!IS_REMOTE_CONFIGURED && (
         <div className="mt-4 rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-900">
           Cross-device challenges need the shared backend (Supabase) which isn&apos;t configured in this deployment.
@@ -73,7 +70,7 @@ function FriendsInner() {
             <span className="text-sm font-semibold">Create a challenge</span>
             <div className="ml-auto flex rounded-full border p-1">
               {(["en", "id"] as const).map((l) => (
-                <button key={l} onClick={() => setLanguage(l)} className={`rounded-full px-3 py-1 text-xs font-semibold ${language === l ? "bg-black text-white" : "text-zinc-600"}`}>
+                <button type="button" key={l} onClick={() => setLanguage(l)} aria-pressed={language === l} className={`min-h-11 rounded-full px-3 py-1 text-xs font-semibold ${language === l ? "bg-black text-white" : "text-zinc-600"}`}>
                   {l === "en" ? "English" : "Indonesia"}
                 </button>
               ))}
@@ -81,13 +78,14 @@ function FriendsInner() {
           </div>
 
           <button
+            type="button"
             onClick={async () => {
               setCreating(true);
               setError(null);
               try {
                 const pool = language === "en" ? ENGLISH_SPRINT_POOL : INDONESIAN_CORPUS.filter((c) => c.mode === "sprint");
                 const exercise = pool[Math.floor(Math.random() * pool.length)];
-                const displayName = getUsername() ?? "challenger";
+      const displayName = getNickname() ?? "challenger";
                 const id = await createFriendChallenge({
                   creatorName: displayName,
                   payload: {
@@ -107,7 +105,7 @@ function FriendsInner() {
               }
             }}
             disabled={creating}
-            className="mt-3 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+            className="mt-3 min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
           >
             {creating ? "Creating…" : "Create 30s sprint challenge"}
           </button>
@@ -134,10 +132,11 @@ function ShareLink({ challengeId }: { challengeId: string }) {
       <div className="text-xs font-semibold">Share this link — works on any device</div>
       <div className="mt-1 break-all rounded bg-zinc-100 p-2 font-mono text-xs dark:bg-zinc-800">{link || "…"}</div>
       <div className="mt-2 flex gap-2">
-        <button onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }} disabled={!link} className="rounded-full border bg-white px-4 py-1.5 text-sm dark:bg-zinc-900">
+        <button type="button" onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }} disabled={!link} className="min-h-11 rounded-full border bg-white px-4 py-1.5 text-sm dark:bg-zinc-900">
           {copied ? "Copied!" : "Copy link"}
         </button>
         <button
+          type="button"
           onClick={async () => {
             track("share_clicked", { id: challengeId });
             if (navigator.share) await navigator.share({ title: "TypingArena Challenge", text: `Beat my typing challenge!`, url: link }).catch(() => {});
@@ -180,7 +179,7 @@ function AcceptChallenge({ challengeId }: { challengeId: string }) {
       setMyResult(r);
       try {
         await submitFriendResult(challengeId, {
-          displayName: getUsername() ?? "guest",
+          displayName: getNickname() ?? "guest",
           wpm: r.grossWpm,
           accuracy: r.accuracy,
           typedChars: r.typedChars,
@@ -256,7 +255,7 @@ function ShareLinkSmall({ challengeId }: { challengeId: string }) {
     setLink(`${window.location.origin}${window.location.pathname}?challenge=${challengeId}`);
   }, [challengeId]);
   return (
-    <button onClick={() => navigator.clipboard.writeText(link)} disabled={!link} className="mt-3 rounded-full border px-4 py-1.5 text-xs">
+    <button type="button" onClick={() => navigator.clipboard.writeText(link)} disabled={!link} className="mt-3 min-h-11 rounded-full border px-4 py-1.5 text-xs">
       Copy invite link for more friends
     </button>
   );
@@ -264,8 +263,10 @@ function ShareLinkSmall({ challengeId }: { challengeId: string }) {
 
 export default function FriendsPage() {
   return (
-    <Suspense fallback={<div className="py-16 text-center text-sm text-zinc-500">Loading…</div>}>
-      <FriendsInner />
-    </Suspense>
+    <FeaturePageShell routePath="/friends" slot="friends" copy={FEATURE_COPY.friends}>
+      <Suspense fallback={<div className="py-16 text-center text-sm text-zinc-500">Loading…</div>}>
+        <FriendsInner />
+      </Suspense>
+    </FeaturePageShell>
   );
 }

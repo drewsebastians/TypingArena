@@ -18,6 +18,7 @@ import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
   cancelRoom,
   createRoom,
+  ensureSharedIdentity,
   fetchRoom,
   fetchRoomResults,
   finishRoom,
@@ -27,7 +28,7 @@ import {
   type RoomResultRow,
 } from "@/lib/remote";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { getUsername } from "@/lib/history";
+import { getNickname } from "@/lib/history";
 import { sanitizeDisplayName } from "@/lib/sanitize";
 import { t } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
@@ -115,7 +116,7 @@ export default function MultiplayerPanel() {
       .subscribe();
     channelRef.current = ch;
     setTimeout(async () => {
-      await ch.track({ name: sanitizeDisplayName(getUsername() ?? "player") });
+      await ch.track({ name: sanitizeDisplayName(getNickname() ?? "player") });
     }, 300);
   }, []);
 
@@ -131,7 +132,7 @@ export default function MultiplayerPanel() {
     setError(null);
     try {
       const { code, hostToken } = await createRoom({
-        hostName: getUsername() ?? "host",
+      hostName: getNickname() ?? "host",
         language: "en",
         durationSec: 30,
       });
@@ -152,6 +153,7 @@ export default function MultiplayerPanel() {
     async (code: string) => {
       setError(null);
       try {
+        await ensureSharedIdentity(getNickname() ?? undefined);
         const r = await fetchRoom(code);
         setRoom(r);
         setProgress({});
@@ -217,7 +219,7 @@ export default function MultiplayerPanel() {
       if (!room) return;
       try {
         await finishRoom(room.code, playerKey(), {
-          displayName: getUsername() ?? "player",
+      displayName: getNickname() ?? "player",
           typedChars: r.typedChars,
           correctChars: r.correctChars,
           elapsedMs: r.elapsedMs,
@@ -238,7 +240,7 @@ export default function MultiplayerPanel() {
       channelRef.current?.send({
         type: "broadcast",
         event: "progress",
-        payload: { key: playerKey(), name: sanitizeDisplayName(getUsername() ?? "player"), ...p },
+      payload: { key: playerKey(), name: sanitizeDisplayName(getNickname() ?? "player"), ...p },
       });
     },
     [],
@@ -247,7 +249,6 @@ export default function MultiplayerPanel() {
   if (!IS_REMOTE_CONFIGURED) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("mp.title")}</h1>
         <p className="mt-3 rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")}</p>
       </div>
     );
@@ -256,17 +257,13 @@ export default function MultiplayerPanel() {
   if (phase === "menu") {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("mp.title")}</h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Create a room, share the code, and race the same deterministic passage in real time. Casual sync — tolerant of normal network lag. Only the room creator can start the race.
-        </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button onClick={() => void create()} className="rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+          <button type="button" onClick={() => void create()} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
             {t("mp.createRoom")}
           </button>
           <div className="flex items-center gap-2">
             <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="CODE" maxLength={6} aria-label="room code" className="w-32 rounded-lg border px-3 py-2 font-mono uppercase dark:bg-zinc-800" />
-            <button onClick={() => void join(joinCode)} disabled={joinCode.length < 4} className="rounded-full border px-5 py-2 text-sm font-semibold disabled:opacity-40">
+            <button type="button" onClick={() => void join(joinCode)} disabled={joinCode.length < 4} className="min-h-11 rounded-full border px-5 py-2 text-sm font-semibold disabled:opacity-40">
               {t("mp.joinRoom")}
             </button>
           </div>
@@ -299,7 +296,7 @@ export default function MultiplayerPanel() {
               {players.length === 0 && <li className="px-4 py-2 text-sm text-zinc-500">Waiting for presence…</li>}
             </ul>
             {isHost ? (
-              <button onClick={() => void beginRace()} className="mt-4 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+              <button type="button" onClick={() => void beginRace()} className="mt-4 min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
                 Start race ({room.duration_sec}s sprint)
               </button>
             ) : (
@@ -369,19 +366,20 @@ export default function MultiplayerPanel() {
         </ol>
         <div className="mt-4 flex flex-wrap gap-2">
           {isHost && (
-            <button onClick={() => void rematch()} className="rounded-full bg-black px-5 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
+            <button type="button" onClick={() => void rematch()} className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">
               Rematch
             </button>
           )}
           {isHost && (
             <button
+              type="button"
               onClick={() => { if (window.confirm("End this race for everyone? No further results can be recorded.")) void cancel(); }}
               className="rounded-full border border-red-300 px-5 py-2 text-sm text-red-700"
             >
               End race
             </button>
           )}
-          <button onClick={() => { setPhase("menu"); setRoom(null); }} className="rounded-full border px-5 py-2 text-sm">Back</button>
+          <button type="button" onClick={() => { setPhase("menu"); setRoom(null); }} className="min-h-11 rounded-full border px-5 py-2 text-sm">Back</button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">Casual race — final speeds are recomputed from typed evidence by the server.</p>
       </div>

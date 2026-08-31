@@ -3,8 +3,8 @@
 //
 // Tracks: strict/normalized/word/punct accuracy, effective WPM, active typing
 // time, corrections, play/replay counts, actual seconds heard, pause count,
-// seek count, replay ratio. History persists locally; ranked attempts sync to
-// the shared backend when the user is signed in.
+// seek count, replay ratio. History persists locally; callers opt into shared
+// sync explicitly.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TranscriptionItem, TranscriptionResult } from "@/lib/types";
@@ -21,6 +21,8 @@ import { BASE_PATH } from "@/lib/config";
 import { saveTranscriptionResult } from "@/lib/history";
 import { audioEvidence, queueAttempt } from "@/lib/sync";
 import { track } from "@/lib/analytics";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
+import ResultSection from "@/components/tool/ResultSection";
 
 function newId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -31,16 +33,21 @@ export default function TranscriptionEngine({
   item,
   exerciseId,
   onComplete,
+  onLifecycleChange,
+  syncPolicy = "local",
 }: {
   item: TranscriptionItem;
   /** Overrides the clip id in the persisted result (e.g. assignment binding). */
   exerciseId?: string;
   onComplete?: (r: TranscriptionResult) => void;
+  onLifecycleChange?: (state: TaskLifecycle) => void;
+  syncPolicy?: "local" | "shared";
 }) {
   const [typed, setTyped] = useState("");
   const [playing, setPlaying] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>({ ...initialPlaybackState });
   const [submitted, setSubmitted] = useState<TranscriptionResult | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const [pasteFlag, setPasteFlag] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [corrections, setCorrections] = useState(0);
@@ -51,6 +58,33 @@ export default function TranscriptionEngine({
   const firstInputAtRef = useRef<number | null>(null);
   const lastInputAtRef = useRef<number | null>(null);
   const activeInputMsRef = useRef(0);
+  const onLifecycleRef = useRef(onLifecycleChange);
+
+  useEffect(() => {
+    onLifecycleRef.current = onLifecycleChange;
+  }, [onLifecycleChange]);
+
+  useEffect(() => {
+    onLifecycleRef.current?.("ready");
+    return () => {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("idle");
+    };
+  }, [item.id]);
+
+  useEffect(() => {
+    if (submitted) {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("result");
+    } else if (startedAt !== null) {
+      document.documentElement.setAttribute("data-exercise-active", "");
+      onLifecycleRef.current?.("active");
+      if (firstPlayAtRef.current !== null) track("task_started", { task: "transcription", language: item.language });
+    } else {
+      document.documentElement.removeAttribute("data-exercise-active");
+      onLifecycleRef.current?.("ready");
+    }
+  }, [submitted, startedAt, item.language]);
 
   useEffect(() => {
     track("transcription_start", { language: item.language, exerciseId: item.id });
@@ -82,6 +116,7 @@ export default function TranscriptionEngine({
   useEffect(() => {
     if (playback.playCount > 0 && firstPlayAtRef.current === null) {
       firstPlayAtRef.current = Date.now();
+      setStartedAt(firstPlayAtRef.current);
     }
   }, [playback.playCount]);
 
@@ -168,19 +203,20 @@ export default function TranscriptionEngine({
       timestamp: Date.now(),
     };
     saveTranscriptionResult(res);
-    void queueAttempt(audioEvidence(res, "transcription"));
+    onLifecycleRef.current?.("completing");
+    if (syncPolicy === "shared") void queueAttempt(audioEvidence(res, "transcription"));
     setSubmitted(res);
     onComplete?.(res);
     audio.pause();
     track("transcription_complete", { language: item.language, normalized, wordAccuracy: wAcc, replayRatio: res.playback.replayRatio });
+    track("task_completed", { task: "transcription", language: item.language, integrity });
     if (pasteFlag) track("paste_detected", { source: "transcription" });
     if (integrity !== "ranked") track("session_unranked", { reason: reasons.join(",") });
   };
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <h2 className="text-2xl font-black">Transcription Result</h2>
+      <ResultSection title="Transcription result" className="mx-auto max-w-3xl">
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric label="Strict" value={`${submitted.strictScore}%`} />
           <Metric label="Normalized" value={`${submitted.normalizedScore}%`} />
@@ -199,10 +235,10 @@ export default function TranscriptionEngine({
           <summary className="cursor-pointer font-medium">Compare transcript</summary>
           <div className="mt-2 font-mono text-sm"><span className="text-zinc-500">Reference:</span> {item.transcript}</div>
         </details>
-        <button onClick={() => window.location.reload()} className="mt-4 rounded-full border px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 min-h-11 rounded-full border px-5 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
           Next clip ↻
         </button>
-      </div>
+      </ResultSection>
     );
   }
 
@@ -219,6 +255,7 @@ export default function TranscriptionEngine({
           onSeeked={syncPlayback}
         />
         <button
+          type="button"
           onClick={handlePlayPause}
           className={`rounded-full px-6 py-3 text-sm font-bold ${playing ? "bg-zinc-300 text-zinc-700" : "bg-black text-white dark:bg-white dark:text-black"}`}
           aria-label={playing ? "pause clip" : "play clip"}
@@ -242,7 +279,7 @@ export default function TranscriptionEngine({
         className="mt-1 w-full rounded-lg border p-3 font-mono dark:bg-zinc-800"
       />
       <div className="mt-3 flex items-center gap-3">
-        <button onClick={handleSubmit} disabled={playback.playCount === 0 || !typed.trim()} className="rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">
+        <button type="button" onClick={handleSubmit} disabled={playback.playCount === 0 || !typed.trim()} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black">
           Submit transcription
         </button>
         {pasteFlag && <span className="text-xs text-red-600">Paste blocked — attempt will be flagged.</span>}

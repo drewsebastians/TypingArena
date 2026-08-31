@@ -59,3 +59,16 @@ html[data-exercise-active] header:hover,
 html[data-exercise-active] header:focus-within {
   opacity: 1;
 }
+
+/* Respect the user's motion preference for caret pulses, hover lifts, and
+ * route transitions without removing the visible focus state. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

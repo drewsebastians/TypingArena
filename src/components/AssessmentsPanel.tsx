@@ -1,16 +1,17 @@
 ﻿"use client";
 // Employer skills assessments — practice/operational assessment only.
 // Creator builds a module sequence; candidates complete via invite link
-// WITHOUT signup (token identifies the session). Results are private to owner.
+// Results are private to the organizer.
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { InviteState } from "@/lib/remote";
 import {
   createAssessment,
   fetchAssessmentDefinition,
   fetchAssessmentResults,
   fetchMyAssessments,
-  getCurrentUser,
+  issueResourceManagementToken,
+  recoverResourceManagement,
+  revokeResourceManagementToken,
   revokeAssessmentInvite,
   submitAssessmentResult,
   InviteInvalidError,
@@ -26,6 +27,7 @@ import { findDictationClip, findTranscriptionClip } from "@/lib/content/dictatio
 import { t } from "@/lib/i18n";
 import type { CorpusItem, DictationResult, TranscriptionResult, TypingResult } from "@/lib/types";
 import { track } from "@/lib/analytics";
+import { parseManageFragment } from "@/lib/resourceAccess";
 
 const MODULE_LIBRARY: Array<{ kind: string; ref: string; durationSec: number; label: string }> = [
   { kind: "typing-sprint", ref: "sprint", durationSec: 30, label: "Sprint 30s" },
@@ -36,18 +38,39 @@ const MODULE_LIBRARY: Array<{ kind: string; ref: string; durationSec: number; la
 
 export default function AssessmentsPanel() {
   const [invite, setInvite] = useState<string | null>(null);
+  const [manage, setManage] = useState<{ id: string; token: string } | null>(null);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const inv = p.get("invite");
     if (inv) setInvite(inv.toUpperCase());
+    const manageId = p.get("manage");
+    const token = parseManageFragment(window.location.hash);
+    if (manageId && token) setManage({ id: manageId, token });
   }, []);
 
   if (invite) return <CandidateFlow invite={invite} />;
+  if (manage) return <RecoverAssessment resource={manage} />;
   return <CreatorPanel />;
 }
 
+function RecoverAssessment({ resource }: { resource: { id: string; token: string } }) {
+  const [message, setMessage] = useState("Recovering workspace…");
+  const [recovered, setRecovered] = useState(false);
+  useEffect(() => {
+    recoverResourceManagement("assessment", resource.id, resource.token)
+      .then(() => {
+        track("manage_link_recovered", { resourceType: "assessment" });
+        window.history.replaceState({}, "", window.location.pathname);
+        setRecovered(true);
+      })
+      .catch((e: unknown) => setMessage(e instanceof Error ? e.message : "Management link is invalid or expired"));
+  }, [resource.id, resource.token]);
+  if (recovered) return <CreatorPanel />;
+  return <div className="mx-auto max-w-xl px-4 py-16 text-center"><h1 className="text-2xl font-black">Workspace recovery</h1><p role="status" className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{message}</p></div>;
+}
+
 // ---------------------------------------------------------------------------
-// Candidate flow (no signup required)
+// Candidate flow (invite link identifies the assessment)
 //
 // The module sequence is resolved FROM THE SAVED ASSESSMENT DEFINITION via the
 // invite token — never a client-side default list. The server validates invite
@@ -235,6 +258,7 @@ function CreatorPanel() {
   const [list, setList] = useState<AssessmentRecord[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [managementLinks, setManagementLinks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!IS_REMOTE_CONFIGURED) return;
@@ -246,7 +270,6 @@ function CreatorPanel() {
   if (!IS_REMOTE_CONFIGURED) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-black">{t("assess.title")}</h1>
         <p className="mt-3 rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-900">{t("common.backendRequired")}</p>
       </div>
     );
@@ -256,11 +279,6 @@ function CreatorPanel() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-black">{t("assess.title")}</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Build a short standardized assessment for candidates or team members. Candidates open an invite link — no signup needed. Results are visible only to you. This is a practice/operational skills check, not a legally validated hiring instrument.
-      </p>
-
       <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Data-entry screening v1" aria-label="assessment title" maxLength={80} className="w-full rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
         <fieldset className="mt-3">
@@ -279,13 +297,17 @@ function CreatorPanel() {
           </div>
         </fieldset>
         <button
+          type="button"
           onClick={async () => {
             try {
-              await createAssessment({
+              const created = await createAssessment({
                 title: sanitizeTitle(title),
                 modules: selected.map((i) => MODULE_LIBRARY[i]),
               });
+              const management = await issueResourceManagementToken("assessment", created.id);
+              setManagementLinks((prev) => ({ ...prev, [created.id]: `${window.location.origin}${window.location.pathname}?manage=${created.id}#manage=${management.token}` }));
               track("assessment_created", {});
+              track("manage_link_created", { resourceType: "assessment" });
               setList(await fetchMyAssessments());
               setTitle("");
             } catch (e) {
@@ -293,7 +315,7 @@ function CreatorPanel() {
             }
           }}
           disabled={title.trim().length < 2 || selected.length === 0}
-          className="mt-4 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+          className="mt-4 min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
         >
           Create + generate invite link
         </button>
@@ -304,15 +326,54 @@ function CreatorPanel() {
       <div className="mt-2 divide-y rounded-xl border bg-white dark:bg-zinc-900">
         {list.length === 0 && <p className="px-4 py-5 text-center text-sm text-zinc-500">Nothing yet.</p>}
         {list.map((a) => (
-          <div key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+          <div key={a.id}>
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
             <span className="flex-1 font-semibold">{sanitizeTitle(a.title)}</span>
             <code className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-800">{a.invite_code}</code>
-            <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?invite=${a.invite_code}`)} className="rounded-full border px-3 py-1 text-xs">Copy invite</button>
-            <button onClick={() => setOpenId(a.id)} className="rounded-full border px-3 py-1 text-xs font-semibold">Results →</button>
+            <button type="button" onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?invite=${a.invite_code}`)} className="min-h-11 rounded-full border px-3 py-1 text-xs">Copy invite</button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const management = await issueResourceManagementToken("assessment", a.id);
+                  const link = `${window.location.origin}${window.location.pathname}?manage=${a.id}#manage=${management.token}`;
+                  setManagementLinks((prev) => ({ ...prev, [a.id]: link }));
+                  await navigator.clipboard.writeText(link);
+                  track("manage_link_created", { resourceType: "assessment" });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not create management link");
+                }
+              }}
+              className="min-h-11 rounded-full border px-3 py-1 text-xs"
+            >
+              Copy management link
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm("Revoke active management links for this assessment?")) return;
+                try {
+                  await revokeResourceManagementToken("assessment", a.id);
+                  setManagementLinks((prev) => {
+                    const next = { ...prev };
+                    delete next[a.id];
+                    return next;
+                  });
+                  track("manage_link_revoked", { resourceType: "assessment" });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not revoke management links");
+                }
+              }}
+              className="min-h-11 text-xs text-red-600 underline"
+            >
+              Revoke management links
+            </button>
+            <button type="button" onClick={() => setOpenId(a.id)} className="min-h-11 rounded-full border px-3 py-1 text-xs font-semibold">Results →</button>
             {a.revoked ? (
               <span className="text-xs font-bold uppercase text-red-600">revoked</span>
             ) : (
               <button
+                type="button"
                 onClick={async () => {
                   if (!window.confirm("Revoke this invite? Candidates with the link will be told it was revoked.")) return;
                   try {
@@ -323,17 +384,16 @@ function CreatorPanel() {
                     setError(e instanceof Error ? e.message : "Revoke failed");
                   }
                 }}
-                className="text-xs text-red-600 underline"
+                className="min-h-11 text-xs text-red-600 underline"
               >
                 Revoke
               </button>
             )}
+            </div>
+            {managementLinks[a.id] && <p className="mx-4 mb-3 break-all rounded bg-amber-50 p-2 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLinks[a.id]}</p>}
           </div>
         ))}
       </div>
-      <p className="mt-6 text-xs text-zinc-500">
-        Need an account? <Link href="/progress" className="underline">Sign in on the Progress page.</Link>
-      </p>
     </div>
   );
 }
@@ -342,7 +402,6 @@ function ResultsView({ assessmentId, onBack }: { assessmentId: string; onBack: (
   const [rows, setRows] = useState<Awaited<ReturnType<typeof fetchAssessmentResults>>>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   useEffect(() => {
-    void getCurrentUser().catch(() => undefined);
     void fetchAssessmentResults(assessmentId)
       .then(setRows)
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not load results"));
@@ -350,7 +409,7 @@ function ResultsView({ assessmentId, onBack }: { assessmentId: string; onBack: (
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <button onClick={onBack} className="mb-3 text-sm underline">← my assessments</button>
+      <button type="button" onClick={onBack} className="mb-3 min-h-11 text-sm underline">← my assessments</button>
       <h2 className="text-xl font-bold">Candidate summaries</h2>
       {loadError && (
         <p role="alert" className="mt-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">

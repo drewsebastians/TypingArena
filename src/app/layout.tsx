@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import Header from "@/components/Header";
 import ConsentBanner from "@/components/ConsentBanner";
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Train and prove how accurately and quickly you turn what you see or hear into text. Timed typing tests, real dictation audio, transcription sprints, Daily Arena and ranked boards. English + Bahasa Indonesia. Free, no login required.",
+    "Train and prove how accurately and quickly you turn what you see or hear into text. Timed typing tests, real dictation audio, transcription sprints, Daily Arena and ranked boards. English + Bahasa Indonesia. Free, no setup required.",
   alternates: {
     canonical: "/",
   },
@@ -44,11 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="font-semibold text-zinc-700 dark:text-zinc-300">{SITE_NAME} — Human skill is the product. No AI inference at runtime.</div>
             <div className="mt-1">Free-first • Ads never inside active tests • English + Indonesian • Scoring v2.0.0</div>
             <div className="mt-2 flex justify-center gap-4">
-              <a href="/typing-test" className="hover:underline">Typing Test</a>
-              <a href="/dictation" className="hover:underline">Dictation</a>
-              <a href="/daily-arena" className="hover:underline">Daily Arena</a>
-              <a href="/progress" className="hover:underline">Progress</a>
-              <a href="/privacy" className="hover:underline">Privacy</a>
+              <Link href="/typing-test" className="hover:underline">Typing Test</Link>
+              <Link href="/dictation" className="hover:underline">Dictation</Link>
+              <Link href="/daily-arena" className="hover:underline">Daily Arena</Link>
+              <Link href="/progress" className="hover:underline">Progress</Link>
+              <Link href="/privacy" className="hover:underline">Privacy</Link>
             </div>
           </div>
         </footer>

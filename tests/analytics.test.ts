@@ -70,7 +70,7 @@ describe("analytics adapter", () => {
     const analytics = await loadFresh();
     const { setAnalyticsConsent } = await import("@/lib/history");
     setAnalyticsConsent("granted");
-    analytics.track("account_login", { stage: "otp-sent" });
+    analytics.track("task_started", { mode: "typing" });
     const w = window as unknown as { dataLayer?: unknown[][]; gtag?: (...args: unknown[]) => void };
     expect(w.gtag).toBeTypeOf("function");
     const flat = JSON.stringify(w.dataLayer);
@@ -110,5 +110,30 @@ describe("analytics adapter", () => {
         expect(forbidden).not.toContain(key.toLowerCase());
       }
     }
+  });
+
+  it("strips typed characters, resource identifiers, secrets, and nested payloads at the adapter boundary", async () => {
+    const analytics = await loadFresh();
+    analytics.track("keystroke_error", {
+      expected: "q",
+      got: "w",
+      expectedClass: "letter",
+      typedClass: "letter",
+      exerciseId: "friend-PRIVATE-ID",
+      token: "management-secret",
+      emailAddress: "person@example.test",
+      answerText: "private answer text",
+      sessionToken: "session-secret",
+      nested: { transcript: "private answer" },
+    });
+
+    const entry = analytics.getQueue()[0];
+    expect(entry.props).toEqual({ expectedClass: "letter", typedClass: "letter" });
+    expect(JSON.stringify(entry)).not.toContain("friend-PRIVATE-ID");
+    expect(JSON.stringify(entry)).not.toContain("management-secret");
+    expect(JSON.stringify(entry)).not.toContain("person@example.test");
+    expect(JSON.stringify(entry)).not.toContain("private answer text");
+    expect(JSON.stringify(entry)).not.toContain("session-secret");
+    expect(JSON.stringify(entry)).not.toContain("private answer");
   });
 });

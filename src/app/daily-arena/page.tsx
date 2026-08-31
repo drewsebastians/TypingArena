@@ -2,7 +2,7 @@
 // Daily Arena — one deterministic challenge per product-day (Asia/Jakarta).
 //
 // Shared board comes from the central backend when configured and the user is
-// signed in. Without a backend the page degrades HONESTLY: your attempt is
+// anonymously authenticated when publishing. Without a backend the page degrades HONESTLY: your attempt is
 // still scored and kept locally, and the board area explains what is missing.
 // No fake competitor rows are ever shown.
 
@@ -12,11 +12,9 @@ import { getDailyChallenge, formatDailyTitle } from "@/lib/daily";
 import { arenaDateString } from "@/lib/datetime";
 import TypingEngine from "@/components/TypingEngine";
 import DictationPanel from "@/components/DictationPanel";
-import AdSlot from "@/components/AdSlot";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
 import {
   fetchDailyBoard,
-  getCurrentUser,
   submitAttempt,
   type DailyBoardRow,
 } from "@/lib/remote";
@@ -24,13 +22,20 @@ import { track } from "@/lib/analytics";
 import { typingEvidence } from "@/lib/sync";
 import type { DailyChallenge } from "@/lib/daily";
 import type { TypingResult } from "@/lib/types";
+import { SafeAdSlot } from "@/components/AdSlot";
+import ToolPageShell from "@/components/tool/ToolPageShell";
+import RelatedTools from "@/components/tool/RelatedTools";
+import NextStepCard from "@/components/tool/NextStepCard";
+import { getRouteByPath } from "@/lib/routeRegistry";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function DailyArena() {
+  const { locale } = useLocale();
   const [challenge, setChallenge] = useState<DailyChallenge | null>(null);
   const [iso, setIso] = useState<string | null>(null);
   const [result, setResult] = useState<TypingResult | null>(null);
   const [board, setBoard] = useState<DailyBoardRow[]>([]);
-  const [boardState, setBoardState] = useState<"loading" | "ready" | "unconfigured" | "error" | "signed-out">(
+  const [boardState, setBoardState] = useState<"loading" | "ready" | "unconfigured" | "error">(
     () => (IS_REMOTE_CONFIGURED ? "loading" : "unconfigured"),
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -46,27 +51,17 @@ export default function DailyArena() {
     track("daily_arena_start", { date: today });
     if (!IS_REMOTE_CONFIGURED) return;
     let cancelled = false;
-    getCurrentUser()
-      .then((user) => {
+    fetchDailyBoard(today)
+      .then((rows) => {
         if (cancelled) return;
-        if (!user) {
-          setBoardState("signed-out");
-          return;
-        }
-        return fetchDailyBoard(today)
-          .then((rows) => {
-            if (cancelled) return;
-            setBoard(rows);
-            setBoardState("ready");
-          })
-          .catch((e: unknown) => {
-            if (cancelled) return;
-            setBoardState("error");
-            setErrorMsg(e instanceof Error ? e.message : "Failed to load board");
-          });
+        setBoard(rows);
+        setBoardState("ready");
       })
       .catch(() => {
-        if (!cancelled) setBoardState("unconfigured");
+        if (!cancelled) {
+          setBoardState("error");
+          setErrorMsg("Failed to load the shared board");
+        }
       });
     return () => {
       cancelled = true;
@@ -101,17 +96,22 @@ export default function DailyArena() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <ToolPageShell
+      eyebrow={locale === "id" ? "Kompetisi" : "Compete"}
+      title={`${formatDailyTitle(challenge.iso)} ${locale === "id" ? "Tantangan" : "Challenge"}`}
+      description={locale === "id" ? "Satu tantangan standar per hari. Mainkan secara lokal, lalu publikasikan hasil bersih ke papan bersama saat backend kompetisi tersedia." : "One standardized challenge per day. Play locally, then publish a clean result to the shared board when the competition backend is available."}
+    >
+      <div className="mx-auto max-w-3xl">
       <div className="rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 p-6 text-white">
         <div className="text-xs uppercase tracking-widest opacity-80">Daily Arena • {iso} • resets midnight Asia/Jakarta</div>
-        <h1 className="mt-1 text-2xl font-black">{formatDailyTitle(challenge.iso)} Challenge</h1>
-        <p className="mt-1 text-sm opacity-90">Everyone gets the same standardized test today. Sign in to enter the shared board.</p>
+        <h2 className="mt-1 text-2xl font-black">{formatDailyTitle(challenge.iso)} Daily exercise</h2>
+        <p className="mt-1 text-sm opacity-90">Everyone gets the same standardized test today. Publish a clean result to the shared board when you finish.</p>
         <div className="mt-2 text-xs opacity-75">Only clean attempts (no paste, no impossible bursts) enter the ranked board.</div>
       </div>
 
       <div className="mt-4 flex justify-center gap-2">
-        <button onClick={() => setTab("typing")} className={`rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "typing" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Typing</button>
-        <button onClick={() => setTab("dictation")} className={`rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "dictation" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Dictation</button>
+        <button type="button" onClick={() => setTab("typing")} aria-pressed={tab === "typing"} className={`min-h-11 rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "typing" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Typing</button>
+        <button type="button" onClick={() => setTab("dictation")} aria-pressed={tab === "dictation"} className={`min-h-11 rounded-full px-5 py-1.5 text-sm font-semibold ${tab === "dictation" ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>Dictation</button>
       </div>
 
       <div className="mt-6">
@@ -155,11 +155,6 @@ export default function DailyArena() {
             The shared board needs the competition backend. Your attempt is still scored and saved locally. Operators: see <code>supabase/migrations</code> in the repo README.
           </p>
         )}
-        {boardState === "signed-out" && (
-          <p className="py-4 text-center text-sm text-zinc-500">
-            <Link href="/progress" className="underline">Sign in</Link> to publish your daily attempt and see today&apos;s ranked competitors.
-          </p>
-        )}
         {boardState === "error" && <p className="py-4 text-center text-sm text-red-600">Could not load board: {errorMsg}</p>}
         {boardState === "ready" && board.length === 0 && <p className="py-6 text-center text-sm text-zinc-500">No ranked entries yet today — be the first.</p>}
         {board.length > 0 && (
@@ -167,7 +162,7 @@ export default function DailyArena() {
             {board.map((e, i) => (
               <li key={e.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="font-mono text-xs text-zinc-500">#{i + 1}</span>
-                <span className="flex-1 px-3 font-semibold">@{e.username ?? e.user_id.slice(0, 8)}</span>
+                <span className="flex-1 px-3 font-semibold">@{e.username ?? "typer"}</span>
                 <span className="font-mono font-bold">{Number(e.wpm).toFixed(1)} WPM</span>
                 <span className="ml-3 text-xs text-zinc-500">{Number(e.accuracy).toFixed(1)}%</span>
               </li>
@@ -176,8 +171,17 @@ export default function DailyArena() {
         )}
         <Link href="/leaderboard" className="mt-3 inline-block text-sm underline">All-time leaderboard →</Link>
       </div>
-      <AdSlot slot="daily-arena" className="mt-6" />
-    </div>
+      {result && tab === "typing" && (
+        <NextStepCard
+          title={locale === "id" ? "Langkah berikutnya" : "Keep competing"}
+          body={locale === "id" ? "Lihat papan peringkat atau lanjutkan latihan menyimak setelah tantangan hari ini." : "Check the board, or keep the audio side of your skill moving after today’s challenge."}
+          steps={[{ href: "/leaderboard", label: "Leaderboard" }, { href: "/dictation", label: "Try dictation" }]}
+        />
+      )}
+      <SafeAdSlot slot="daily-arena" context="outside-task" className="mt-6" />
+      {getRouteByPath("/daily-arena") && <RelatedTools route={getRouteByPath("/daily-arena")!} />}
+      </div>
+    </ToolPageShell>
   );
 }
 

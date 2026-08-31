@@ -2,8 +2,8 @@ import TranscriptionLibraryPanel from "@/components/TranscriptionLibraryPanel";
 
 export default function TranscriptionLibraryPage() {
   return (
-    <main>
+    <div>
       <TranscriptionLibraryPanel />
-    </main>
+    </div>
   );
 }

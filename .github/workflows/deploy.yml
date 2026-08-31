@@ -28,9 +28,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm install
+      - run: npm ci --no-audit --no-fund
       # Production deployments (workflow_dispatch target=production) require the
       # shared backend configuration as repo/environment secrets; demo builds
       # degrade honestly instead.

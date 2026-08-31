@@ -1,14 +1,14 @@
 "use client";
-// Cross-device attempt sync — queue, retry, idempotent submission, and
+// Explicit shared-attempt sync — queue, retry, idempotent submission, and
 // lossless remote hydration.
 //
 // Guarantees:
-//  - Every scored attempt in EVERY mode is queued locally the moment it is
-//    saved; nothing blocks or fails practice if the backend is unavailable.
-//  - Signed-in sessions flush the queue through the server-authoritative RPC.
-//    Offline/pending items retry on next load / sign-in / manual refresh.
+//  - Shared callers queue an attempt locally the moment it is saved; ordinary
+//    local practice never enters this queue and never needs a backend.
+//  - Anonymous shared sessions flush the queue through the server-authoritative
+//    RPC. Offline/pending items retry on the next explicit shared sync.
 //  - Full result objects travel inside attempts.metrics, so a new device can
-//    reconstruct identical local history after sign-in.
+//    reconstruct identical local history after explicit shared hydration.
 //  - Dedupe is threefold: client-generated result id == attempts.client_id,
 //    unique(user_id, client_id) in Postgres, and local merge checks.
 
@@ -166,6 +166,13 @@ export function pendingSyncCount(): number {
   return readQueue().length;
 }
 
+/** Remove pending shared submissions and their local idempotency markers. */
+export function clearQueue(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(QUEUE_KEY);
+  localStorage.removeItem(SYNCED_KEY);
+}
+
 // ---------------------------------------------------------------------------
 // Evidence builders — one per mode (server recomputes + verifies these)
 // ---------------------------------------------------------------------------
@@ -230,7 +237,7 @@ export function audioEvidence(
 // ---------------------------------------------------------------------------
 
 
-/** Enqueue an attempt for sync; flushes immediately when signed in. */
+/** Enqueue an explicitly shared attempt; flushes immediately when possible. */
 export async function queueAttempt(
   payload: SubmitAttemptPayload,
 ): Promise<void> {
@@ -326,7 +333,7 @@ export function pendingRetryCount(): number {
 }
 
 // ---------------------------------------------------------------------------
-// Hydration — rebuild full local history from remote on a new device
+// Explicit hydration — rebuild local history from a shared anonymous session
 // ---------------------------------------------------------------------------
 
 export interface HydrateReport {
@@ -354,8 +361,9 @@ export function mergeById<T extends { id: string }>(list: T[], incoming: T): num
 }
 
 /**
- * Fetch all remote attempts for the signed-in user and merge any results not
- * present locally into the local stores (full fidelity via stored `metrics`).
+ * Fetch all remote attempts for the current shared session and merge any
+ * results not present locally into the local stores (full fidelity via stored
+ * `metrics`). This is not part of ordinary practice or automatic page load.
  */
 export async function hydrateFromRemote(): Promise<HydrateReport> {
   const report: HydrateReport = { fetched: 0, addedTyping: 0, addedDictation: 0, addedTranscription: 0, addedCareer: 0 };

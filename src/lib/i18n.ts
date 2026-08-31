@@ -40,6 +40,9 @@ export const STRINGS: Dict = {
   "nav.noise": { en: "Noise", id: "Bising" },
   "nav.progress": { en: "Progress", id: "Kemajuan" },
   "nav.assessments": { en: "Assessments", id: "Asesmen" },
+  "nav.more": { en: "More", id: "Lainnya" },
+  "nav.menu": { en: "Menu", id: "Menu" },
+  "nav.closeMenu": { en: "Close navigation menu", id: "Tutup menu navigasi" },
   // common
   "common.language": { en: "Language", id: "Bahasa" },
   "common.start": { en: "Start", id: "Mulai" },
@@ -54,7 +57,6 @@ export const STRINGS: Dict = {
   "nav.groups": { en: "Teams", id: "Tim" },
   "nav.progressFull": { en: "Progress", id: "Kemajuan" },
   "nav.privacy": { en: "Privacy", id: "Privasi" },
-  "common.signInFirst": { en: "Sign in first.", id: "Masuk dulu." },
   // career
   "career.title": { en: "Career Mode — Practice Assessments", id: "Mode Karier — Asesmen Latihan" },
   "career.subtitle": {
