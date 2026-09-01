@@ -21,8 +21,23 @@ export const SITE_URL = resolveSiteUrl();
 
 export const SITE_NAME = "TypingArena";
 
-/** Base path segment ("") or "/TypingArena") for link building outside next/link. */
-export const BASE_PATH = IS_GITHUB_PAGES ? "/TypingArena" : "";
+/**
+ * Base path segment for manual asset URLs outside next/link.
+ *
+ * NEXT_PUBLIC_SITE_URL is available in the client bundle, while the private
+ * GITHUB_PAGES flag is not reliably inlined there. Derive this from the
+ * canonical URL so static project-site assets resolve under /TypingArena.
+ */
+function resolveBasePath(): string {
+  try {
+    const pathname = new URL(SITE_URL).pathname.replace(/\/+$/, "");
+    return pathname === "/" ? "" : pathname;
+  } catch {
+    return IS_GITHUB_PAGES ? "/TypingArena" : "";
+  }
+}
+
+export const BASE_PATH = resolveBasePath();
 
 /** Shared competition backend (Supabase). When unset the app degrades honestly:
  *  local practice still works; shared boards show a setup notice instead of fake data. */
@@ -46,5 +61,5 @@ export const ENABLE_DEV_TTS_FALLBACK = process.env.NODE_ENV !== "production" && 
 
 export function absoluteUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${SITE_URL}${BASE_PATH}${p === "/" && BASE_PATH ? "/" : p}`;
+  return `${SITE_URL}${p}`;
 }
