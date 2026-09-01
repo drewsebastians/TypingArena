@@ -22,7 +22,8 @@ must work when analytics is disabled or unavailable.
 ## Data contract
 
 - Events are sent through `src/lib/analytics.ts` only after explicit analytics
-  consent. A capped local queue supports debugging and export.
+  consent. The capped local queue is optional analytics storage and is also
+  written only after explicit consent.
 - `route_viewed` records the pathname supplied by the adapter and
   `task_configured`/`result_viewed` record coarse lifecycle metadata. Query
   strings, typed content, result identifiers, and secret-bearing URLs are not
