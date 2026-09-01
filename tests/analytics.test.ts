@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Analytics validation — blueprint §13/§35:
-//   * local queue always records (product must not depend on providers);
+//   * optional local queue writes are consent-gated (product must not depend on providers);
 //   * third-party forwarding is strictly consent-gated;
 //   * PostHog AND GA4 have REAL initialization paths (script injection) that
 //     fire only after consent;
@@ -76,6 +76,16 @@ describe("analytics adapter", () => {
     expect(flat).toContain(configValues.GA_ID);
     expect(flat).toContain("anonymize_ip");
     expect(document.querySelector(`script[src^="https://www.googletagmanager.com/gtag/js?id=${configValues.GA_ID}"]`)).not.toBeNull();
+  });
+
+  it("forwards the pathname to GA4 without query strings or fragments", async () => {
+    const analytics = await loadFresh();
+    const { setAnalyticsConsent } = await import("@/lib/history");
+    setAnalyticsConsent("granted");
+    window.history.pushState({}, "", "/TypingArena/typing-test?duration=15#private");
+    analytics.track("route_viewed");
+    const w = window as unknown as { dataLayer?: unknown[][] };
+    expect(w.dataLayer).toContainEqual(["event", "route_viewed", { path: "/TypingArena/typing-test" }]);
   });
 
   it("never forwards anything when consent is denied", async () => {
