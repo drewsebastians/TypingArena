@@ -34,13 +34,11 @@ beforeEach(() => {
 });
 
 describe("analytics adapter", () => {
-  it("records every event into the local queue WITHOUT consent", async () => {
+  it("does not persist optional analytics storage WITHOUT consent", async () => {
     const analytics = await loadFresh();
     analytics.track("typing_test_complete", { wpm: 60, accuracy: 95 });
     const q = analytics.getQueue();
-    expect(q).toHaveLength(1);
-    expect(q[0].event).toBe("typing_test_complete");
-    expect(q[0].props.wpm).toBe(60);
+    expect(q).toHaveLength(0);
   });
 
   it("injects NO third-party scripts before consent", async () => {
@@ -86,11 +84,23 @@ describe("analytics adapter", () => {
     setAnalyticsConsent("denied");
     analytics.track("sync_retry_scheduled", { attempts: 1 });
     expect(document.querySelector("script")).toBeNull();
-    expect(analytics.getQueue()).toHaveLength(1); // local-only record remains
+    expect(analytics.getQueue()).toHaveLength(0);
+  });
+
+  it("clears the local analytics queue when consent is withdrawn", async () => {
+    const analytics = await loadFresh();
+    const { setAnalyticsConsent } = await import("@/lib/history");
+    setAnalyticsConsent("granted");
+    analytics.track("task_started", { task: "typing" });
+    expect(analytics.getQueue()).toHaveLength(1);
+    setAnalyticsConsent("denied");
+    expect(analytics.getQueue()).toHaveLength(0);
   });
 
   it("event payloads stay free of obvious PII keys", async () => {
     const analytics = await loadFresh();
+    const { setAnalyticsConsent } = await import("@/lib/history");
+    setAnalyticsConsent("granted");
     const events: Array<[Parameters<typeof analytics.track>[0], Record<string, unknown>]> = [
       ["typing_test_start", { durationSec: 30, language: "en", mode: "sprint" }],
       ["route_viewed", {}],
@@ -117,6 +127,8 @@ describe("analytics adapter", () => {
 
   it("strips typed characters, resource identifiers, secrets, and nested payloads at the adapter boundary", async () => {
     const analytics = await loadFresh();
+    const { setAnalyticsConsent } = await import("@/lib/history");
+    setAnalyticsConsent("granted");
     analytics.track("keystroke_error", {
       expected: "q",
       got: "w",

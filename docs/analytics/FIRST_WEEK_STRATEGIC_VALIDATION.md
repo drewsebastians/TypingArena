@@ -11,11 +11,12 @@ differentiates** — without changing product strategy or inventing targets.
 - Production analytics provider: disabled/unconfigured at the time of the
   post-launch audit.
 - Runtime behavior with consent off: ordinary practice works; no optional
-  provider requests are permitted.
+  provider requests or analytics-queue writes are permitted.
 - Runtime behavior with a configured provider: forwarding is allowed only after
   explicit analytics consent and goes through `src/lib/analytics.ts`.
-- The local queue is a capped diagnostic/export aid, not a production traffic
-  count and not a substitute for consented provider data.
+- The local queue is a capped diagnostic/export aid available only after an
+  explicit grant; it is not a production traffic count or a substitute for
+  consented provider data.
 
 ## Event contract
 

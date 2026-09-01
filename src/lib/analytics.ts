@@ -6,11 +6,11 @@
 //     grants analytics consent. Cookieless-ish default: we do not set a
 //     distinct identity cookie before consent.
 //   - GA4      (NEXT_PUBLIC_GA_ID) — forwarded when a global gtag exists.
-//   - Local    — always-available debug queue (capped) for development and for
-//     the user's own "export my data" page.
+//   - Local    — capped debug queue for the user's own export/debug flow,
+//     written only after explicit analytics consent.
 //
-// If no provider is configured, track() is a safe no-op that still feeds the
-// local queue — basic practice never depends on analytics availability.
+// If no provider is configured, track() remains safe and forwarding-free;
+// basic practice never depends on analytics availability.
 
 import { GA_ID, POSTHOG_HOST, POSTHOG_KEY } from "./config";
 import { getAnalyticsConsent } from "./history";
@@ -249,17 +249,22 @@ export function track(event: EventName, props: Record<string, unknown> = {}): vo
   if (typeof window === "undefined") return;
   const safeProps = safeAnalyticsProps(props);
   const payload = { event, props: safeProps, ts: Date.now(), path: window.location.pathname };
+  const consent = getAnalyticsConsent();
 
-  try {
-    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as unknown[];
-    q.push(payload);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-500)));
-  } catch {
-    /* ignore */
+  // The local queue is optional analytics storage too. Keep it behind the
+  // same explicit consent boundary as third-party forwarding.
+  if (consent === "granted") {
+    try {
+      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as unknown[];
+      q.push(payload);
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-500)));
+    } catch {
+      /* ignore */
+    }
   }
 
   // Third-party forwarding requires consent.
-  if (getAnalyticsConsent() === "granted") {
+  if (consent === "granted") {
     ensurePosthog();
     const ph = posthogGlobal();
     if (ph) ph.capture(event, { ...safeProps, path: payload.path });

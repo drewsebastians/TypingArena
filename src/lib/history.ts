@@ -175,6 +175,7 @@ export function setNickname(name: string): void {
 }
 
 export type ConsentChoice = "granted" | "denied" | null;
+const ANALYTICS_QUEUE_KEY = "ta:analytics_queue";
 
 export function getAnalyticsConsent(): ConsentChoice {
   if (typeof window === "undefined") return null;
@@ -185,6 +186,7 @@ export function getAnalyticsConsent(): ConsentChoice {
 export function setAnalyticsConsent(choice: Exclude<ConsentChoice, null>): void {
   try {
     localStorage.setItem(KEYS.analyticsConsent, choice);
+    if (choice === "denied") localStorage.removeItem(ANALYTICS_QUEUE_KEY);
   } catch {
     /* ignore */
   }
