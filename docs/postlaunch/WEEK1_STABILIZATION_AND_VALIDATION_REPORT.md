@@ -1,8 +1,8 @@
 # TypingArena Week 1 Stabilization and Validation Report
 
 Status: PRODUCTION STABLE — MEASUREMENT READY  
-Snapshot: 2026-08-31 (post-launch audit)  
-Application baseline: `1abc780312403815f73633b35f19a9b199ded5d7`
+Snapshot: 2026-09-01 (post-launch audit + consent-boundary verification)
+Application baseline: `cb4311d6b941444f15b1ed9037bc16f6e0060de1`
 
 This report records the post-launch evidence available now. It does not claim
 traffic, Search Console, revenue, or strategic validation that the environment
@@ -10,13 +10,15 @@ cannot measure.
 
 ## Executive result
 
-Production is stable. No P0/P1 incident was found. The two contained P2 fixes
+Production is stable. No P0/P1 incident was found. The three contained P2 fixes
 were shipped and verified:
 
 1. lifecycle instrumentation now covers route view, task configuration, result
    view, and Career completion;
 2. repository-owned GitHub Actions were moved off the deprecated Node 20 action
-   runtimes.
+   runtimes;
+3. optional local analytics storage is now explicitly consent-gated and cleared
+   when consent is withdrawn.
 
 The strategic thesis remains unchanged: **WPM acquires; audio differentiates**.
 There is not yet enough consented provider data to evaluate it.
@@ -25,15 +27,15 @@ There is not yet enough consented provider data to evaluate it.
 
 | Item | Evidence |
 | --- | --- |
-| Main | `1abc780312403815f73633b35f19a9b199ded5d7` |
+| Main | `cb4311d6b941444f15b1ed9037bc16f6e0060de1` |
 | Production | `https://drewsebastians.github.io/TypingArena/` |
-| Deployed SHA | `1abc780312403815f73633b35f19a9b199ded5d7`, inferred from successful Pages run `33412373560` for exact main |
-| CI | Run `33412373582`, success |
-| DB integration | Run `33412373573`, success |
-| Deploy | Run `33412373560`, success |
+| Deployed SHA | `cb4311d6b941444f15b1ed9037bc16f6e0060de1`, inferred from successful Pages run `33458659294` for exact main |
+| CI | Run `33458659422`, success |
+| DB integration | Run `33458659304`, success |
+| Deploy | Run `33458659294`, success |
 | Pages | GitHub Pages source `main`, workflow build, `github-pages` environment |
 | Hosted static smoke | 37 passed, 0 failed |
-| Hosted browser smoke | 8 passed, 0 failed across desktop/mobile Chromium |
+| Hosted browser smoke | 6 passed, 0 failed across desktop/mobile Chromium, including consent-off/on |
 
 ## Stabilization findings
 
@@ -41,6 +43,7 @@ There is not yet enough consented provider data to evaluate it.
 | --- | --- | --- | --- | --- | --- |
 | P2-OBS-01 | P2 | Measurement | Source audit found no call sites for `route_viewed`, `task_configured`, or `result_viewed`; Career completion was also not emitted. | PR #6 added the lifecycle events, privacy-safe route tracker, Career completion event, tests, and the first-week specification. | Shipped and hosted-smoke verified. |
 | P2-OPS-01 | P2 | GitHub Actions | Deploy run `33408669165` emitted the repository-owned Node 20 deprecation annotation for checkout/setup-node/deploy-pages/upload-artifact. | PR #7 updated checkout/setup-node, Supabase CLI setup, Pages artifact, and Pages deploy actions to current Node 24-compatible majors. | Shipped; run `33412373560` passed with no Node 20 annotation. |
+| P2-PRIV-01 | P2 | Privacy / observability | Source audit found `track()` could write the capped optional `ta:analytics_queue` before an explicit consent choice, even though provider forwarding was gated. | PR #9 gates queue writes on `granted`, adds Privacy controls, and clears the queue on denial/withdrawal. Hosted consent-off/on probe verified no queue before/after denial and local queue creation only after explicit consent. | Shipped; current deployment verified 6/6. |
 | HYP-REJECT-01 | — | Audio | The hypothesized play-count synchronization defect was not reproduced. Real static playback, pause, replay controls, `readyState`, and advancing `currentTime` passed in hosted probes. | No scoring or playback refactor. Keep monitoring with the new lifecycle events. | Stable; defer. |
 | HYP-REJECT-02 | — | Shared data | A first read-only SQL probe used an incorrect local assumption about the `submit_attempt` signature; the actual `jsonb` RPC signature was then verified successfully. | No production change. Treat as an inspection-query error, not an incident. | Stable. |
 
@@ -89,6 +92,9 @@ workflow failure was evidenced.
 - Anonymous Auth/profile creation, resource-scoped recovery, and shared deletion
   were verified in the controlled hosted smoke. The intended anonymous auth row
   retention after shared-data deletion remains in place.
+- Optional analytics storage is consent-gated: consent-off sessions leave no
+  `ta:analytics_queue`, and withdrawing consent clears it. No provider request
+  was observed because provider configuration remains absent.
 - `purge_expired` exists as a security-definer function. No database cron
   relation was found; scheduler ownership remains external/unverified and is
   not treated as a production incident.
@@ -99,12 +105,12 @@ workflow failure was evidenced.
 
 - Provider state: disabled/unconfigured. No PostHog, GA4, or AdSense keys are
   configured in the repository environment inventory.
-- Consent off: ordinary practice works, local queue behavior remains available,
-  and the hosted browser probe observed zero PostHog, GA/GTM, AdSense, or
-  DoubleClick requests.
-- Consent on: provider forwarding remains gated by the existing explicit consent
-  path; no provider was activated because the external configuration/legal
-  prerequisites are absent.
+- Consent off: ordinary practice works, no optional analytics queue is written,
+  denial clears any prior queue, and the hosted browser probe observed zero
+  PostHog, GA/GTM, AdSense, or DoubleClick requests.
+- Consent on: the optional local queue is written only after explicit consent;
+  provider forwarding remains gated and no provider was activated because the
+  external configuration/legal prerequisites are absent.
 - Lifecycle coverage now includes `route_viewed`, `goal_first_view`,
   `goal_selected`, `task_configured`, `task_started`, `task_completed`,
   `result_viewed`, `result_next_action_clicked`, mode-specific audio lifecycle,
@@ -159,9 +165,11 @@ Owner action: add/verify the production property in Search Console and submit
   skips, with 0 failures. Desktop/mobile coverage included keyboard navigation,
   reduced motion, 320px overflow, language switching, focus restoration, and
   active-task ad boundaries.
-- Production browser proof: 8/8 hosted desktop/mobile checks passed, including
-  route headings, Goal First, typing, dictation, transcription, audio controls,
-  and provider-request absence.
+- Production browser proof: the latest consent/core probe passed 6/6 across
+  desktop/mobile, including consent-off/on, Goal First, typing, dictation,
+  transcription, audio controls, and provider-request absence. The broader
+  pre-privacy-fix hosted regression was also 8/8 on the unchanged application
+  surface.
 - Manual real-device status: Safari, VoiceOver/NVDA, and real Android/iOS are
   NOT RUN.
 - Core Web Vitals: no field data available; do not claim CWV from these checks.
@@ -175,6 +183,7 @@ Owner action: add/verify the production property in Search Console and submit
 | --- | --- | --- | --- | --- |
 | `codex/postlaunch-observability` / [PR #6](https://github.com/drewsebastians/TypingArena/pull/6) | `1b5c37ba` | `6d019d90` | `33408669165` success; hosted smoke 8/8 | Close lifecycle measurement gaps and add first-week spec. |
 | `codex/postlaunch-actions-runtime` / [PR #7](https://github.com/drewsebastians/TypingArena/pull/7) | `4d60a1a5` | `1abc7803` | `33412373560` success; no Node 20 annotation | Remove the verified repository-owned Action runtime deprecation. |
+| `codex/postlaunch-consent-boundary` / [PR #9](https://github.com/drewsebastians/TypingArena/pull/9) | `1b76c77a` | `cb4311d6` | `33458659294` success; hosted consent/core probe 6/6 | Keep optional analytics storage consent-gated and clear it on withdrawal. |
 
 The report itself is documentation-only and does not alter product behavior.
 
@@ -185,21 +194,21 @@ The report itself is documentation-only and does not alter product behavior.
 | `npm ci --no-audit --no-fund` | PASS; 915 packages installed |
 | `npm run lint` | PASS; 0 errors, 0 warnings |
 | `npm run typecheck` | PASS |
-| `npm test` | PASS; 19 files, 167 tests |
+| `npm test` | PASS; 19 files, 168 tests |
 | `npm run build` | PASS; 30 static routes generated |
 | `npm run test:e2e` | PASS; 70 passed, 4 skipped, 0 failed |
-| DB integration | PASS locally on PR #6 and PR #7 exact heads; PASS on main run `33412373573` |
+| DB integration | PASS on PR #9 exact head and merged main run `33458659304` |
 | Production readiness | PASS; 20/20 audio assets, sitemap/robots/static output valid |
 | Runtime-AI/provider scan | PASS; no runtime AI/TTS endpoints or provider bundles |
-| Hosted static smoke | PASS; 37 passed, 0 failed on main deploy `1abc7803` |
-| Hosted browser smoke | PASS; 8 passed, 0 failed on main deploy `1abc7803` |
-| Shared smoke | PASS; one controlled full shared-flow run on the pre-action application deploy; scoped smoke residue counts 0. PR #7 changed workflows only. |
+| Hosted static smoke | PASS; 37 passed, 0 failed on main deploy `cb4311d6` |
+| Hosted browser smoke | PASS; 6 passed, 0 failed across desktop/mobile on main deploy `cb4311d6`; consent-off/on, Goal First, typing boundary, dictation, and transcription included |
+| Shared smoke | PASS; one controlled full shared-flow run on application deploy `1abc7803`; scoped smoke residue counts 0. PR #9 changed consent/analytics/privacy paths only, with no shared-data code changes. |
 
 ## First-week strategic validation
 
 ### Measured facts
 
-- Technical production health is green at the snapshot above.
+- Technical production health is green at the snapshot above (`cb4311d6`).
 - The application can now emit the needed privacy-safe lifecycle events when an
   approved provider is configured and consent is granted.
 - The provider is currently absent/disabled, so no provider traffic or funnel
