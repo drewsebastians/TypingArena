@@ -266,12 +266,13 @@ export function track(event: EventName, props: Record<string, unknown> = {}): vo
   // Third-party forwarding requires consent.
   if (consent === "granted") {
     ensurePosthog();
+    const providerProps = { ...safeProps, path: payload.path };
     const ph = posthogGlobal();
-    if (ph) ph.capture(event, { ...safeProps, path: payload.path });
+    if (ph) ph.capture(event, providerProps);
     if (GA_ID) {
       ensureGtag();
       const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-      if (gtag) gtag("event", event, safeProps);
+      if (gtag) gtag("event", event, providerProps);
     }
   }
 }
