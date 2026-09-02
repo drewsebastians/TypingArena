@@ -16,4 +16,15 @@ describe("public URL configuration", () => {
     expect(BASE_PATH).toBe("/TypingArena");
     expect(absoluteUrl("/typing-test")).toBe("https://drewsebastians.github.io/TypingArena/typing-test");
   });
+
+  it("uses root-relative manual assets for the custom domain", async () => {
+    vi.stubEnv("GITHUB_PAGES", "true");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://typingarena.click/");
+    vi.resetModules();
+
+    const { absoluteUrl, BASE_PATH } = await import("@/lib/config");
+
+    expect(BASE_PATH).toBe("");
+    expect(absoluteUrl("/typing-test")).toBe("https://typingarena.click/typing-test");
+  });
 });
