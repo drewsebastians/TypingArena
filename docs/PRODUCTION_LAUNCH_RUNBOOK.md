@@ -67,7 +67,7 @@ may keep `GITHUB_PAGES=true`; `next.config.ts` derives the emitted path from
 | Mode | Env | Base path | Notes |
 |---|---|---|---|
 | GitHub Pages project site (current demo) | `GITHUB_PAGES=true`, site URL `https://<user>.github.io/<repo>` | `/repo` derived from the URL | Assets/canonical/sitemap already verified live at `https://drewsebastians.github.io/TypingArena` |
-| Custom domain / Vercel-class host | `NEXT_PUBLIC_SITE_URL=https://<domain>` | empty for a root domain | For GitHub Pages custom domains, configure the domain in Pages settings and retain the committed `CNAME` file (`public/CNAME`) |
+| Custom domain / Vercel-class host | `NEXT_PUBLIC_SITE_URL=https://<domain>` | empty for a root domain | For GitHub Pages, configure the custom domain through `GitHub repository → Settings → Pages → Custom domain` (`typingarena.click`) |
 
 After switching: run the smoke script and verify sitemap/canonical flipped:
 ```bash
