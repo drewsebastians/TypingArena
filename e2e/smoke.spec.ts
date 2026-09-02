@@ -7,15 +7,20 @@ import { expect, test } from "@playwright/test";
 test.describe("typing tests — timed semantics", () => {
   const WORDS = "the quick brown fox jumps over the lazy dog ".repeat(25);
 
-  test("goal-first home exposes six goals and a real first workspace", async ({ page }) => {
+  test("home opens a real typing workspace and keeps other skills below it", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /what do you want to improve today/i })).toBeVisible();
-    await expect(page.locator("[data-goal-id]")).toHaveCount(6);
+    await expect(page.getByRole("heading", { name: /type what you see or hear/i })).toBeVisible();
+    await expect(page.locator("[data-home-workspace]")).toBeVisible();
+    await expect(page.locator("[data-goal-id]")).toHaveCount(0);
     await expect(page.getByLabel(/Type here/)).toBeVisible();
-    await page.locator('[data-goal-id="listen-better"]').click();
-    await expect(page.locator("audio")).toHaveCount(1);
-    await page.locator('[data-goal-id="transcribe-accurately"]').click();
-    await expect(page.getByRole("button", { name: /play clip/i })).toBeVisible();
+    await expect(page.locator("[data-home-workspace] audio")).toHaveCount(0);
+    await expect(page.locator("[data-home-workspace] input")).toHaveCount(1);
+    await expect(page.getByText("Listening", { exact: true })).toBeVisible();
+    await expect(page.getByText("Transcription", { exact: true })).toBeVisible();
+    await expect(page.getByText("Work Skills", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /today.?s arena/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /simple workspace for practice groups/i })).toBeVisible();
+    await expect(page.getByLabel(/Type here/)).not.toBeFocused();
   });
 
   for (const duration of [15, 30]) {

@@ -198,9 +198,11 @@ state — integration is complete either way.
 
 ## Documentation index
 
-- `docs/blueprint/README.md` — canonical integrated blueprint and batching-plan index
+- `docs/blueprint/README.md` — canonical v4/v2 blueprint and batching-plan index
+- `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v4.md` — current workspace-first product and UX source of truth
 - `docs/blueprint/TypingArena_Integrated_Ultimate_Blueprint_v2.md` — canonical strategic/product north star
 - `docs/blueprint/TypingArena_Grand_Batching_Plan_v2.md` — canonical closure execution roadmap
+- `docs/journey-v4/` — v4 baseline, phase evidence, traceability, and readiness reports
 - `docs/closure/FINAL_READINESS_REPORT.md` — A–L closure handoff and final recommendation
 - `docs/closure/BLUEPRINT_TRACEABILITY_MATRIX.md` — B00–B16 / R0–R16 evidence map
 - `docs/closure/FINAL_SECURITY_REVIEW.md`, `docs/closure/FINAL_UX_ACCESSIBILITY_REVIEW.md`, and `docs/closure/FINAL_SEO_MONETIZATION_REVIEW.md` — final review records

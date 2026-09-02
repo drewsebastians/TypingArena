@@ -6,6 +6,8 @@ import { SafeAdSlot } from "@/components/AdSlot";
 import ToolPageShell from "@/components/tool/ToolPageShell";
 import RelatedTools from "@/components/tool/RelatedTools";
 import { getRouteByPath } from "@/lib/routeRegistry";
+import ArenaNav from "@/components/ArenaNav";
+import TeamsNav from "@/components/TeamsNav";
 
 type Copy = { eyebrow: string; title: string; description: string };
 
@@ -25,6 +27,8 @@ export default function FeaturePageShell({
   const content = copy[locale];
   return (
     <ToolPageShell eyebrow={content.eyebrow} title={content.title} description={content.description}>
+      {route?.category === "arena" && <ArenaNav />}
+      {route?.category === "teams" && <TeamsNav />}
       {children}
       <SafeAdSlot slot={slot} context="outside-task" className="mx-auto mt-8 max-w-3xl" />
       {route && <RelatedTools route={route} />}

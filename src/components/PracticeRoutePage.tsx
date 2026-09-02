@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import TypingTestPanel from "@/components/TypingTestPanel";
 import DictationPanel from "@/components/DictationPanel";
 import TranscriptionPanel from "@/components/TranscriptionPanel";
@@ -11,6 +11,9 @@ import RelatedTools from "@/components/tool/RelatedTools";
 import { getRouteByPath } from "@/lib/routeRegistry";
 import { useLocale } from "@/components/LocaleProvider";
 import type { Language, Mode } from "@/lib/types";
+import PracticeFamilyNav from "@/components/PracticeFamilyNav";
+import ActiveTaskBoundary from "@/components/tool/ActiveTaskBoundary";
+import type { TaskLifecycle } from "@/lib/taskLifecycle";
 
 type LocalizedCopy = {
   eyebrow: string;
@@ -125,25 +128,33 @@ export function TypingRoutePage({
   const { locale } = useLocale();
   const content = (copy ?? TYPING_ROUTE_COPY[routePath] ?? DEFAULT_TYPING_COPY)[locale];
   const route = getRouteByPath(routePath);
+  const [lifecycle, setLifecycle] = useState<TaskLifecycle>("ready");
+  const taskActive = lifecycle === "active" || lifecycle === "completing";
 
   return (
     <ToolPageShell eyebrow={content.eyebrow} title={content.title} description={content.description}>
+      <PracticeFamilyNav />
       <div className="flex flex-col items-center gap-6">
-        <Suspense fallback={<div className="w-full py-16 text-center text-sm text-zinc-500">{content.loading}</div>}>
-          <TypingTestPanel
-            initialLanguage={initialLanguage}
-            initialDuration={initialDuration}
-            initialMode={initialMode}
-            autoFocus={false}
-          />
-        </Suspense>
-        <section className="w-full max-w-3xl rounded-xl border bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-          <h2 className="font-bold">{content.guidanceTitle}</h2>
-          <p className="mt-1">{content.guidance}</p>
-        </section>
-        <SkillProfile />
-        <SafeAdSlot slot={slot} context="outside-task" />
-        {route && <RelatedTools route={route} />}
+        <ActiveTaskBoundary state={lifecycle} className="w-full">
+          <Suspense fallback={<div className="w-full py-16 text-center text-sm text-zinc-500">{content.loading}</div>}>
+            <TypingTestPanel
+              initialLanguage={initialLanguage}
+              initialDuration={initialDuration}
+              initialMode={initialMode}
+              autoFocus={false}
+              onLifecycleChange={setLifecycle}
+            />
+          </Suspense>
+        </ActiveTaskBoundary>
+        {!taskActive && <>
+          <section className="w-full max-w-3xl rounded-xl border bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+            <h2 className="font-bold">{content.guidanceTitle}</h2>
+            <p className="mt-1">{content.guidance}</p>
+          </section>
+          <SkillProfile />
+          <SafeAdSlot slot={slot} context="outside-task" />
+          {route && <RelatedTools route={route} />}
+        </>}
       </div>
     </ToolPageShell>
   );
@@ -167,22 +178,29 @@ export function AudioRoutePage({
   const { locale } = useLocale();
   const content = (copy ?? (kind === "transcription" ? TRANSCRIPTION_COPY : DEFAULT_AUDIO_COPY))[locale];
   const route = getRouteByPath(routePath);
+  const [lifecycle, setLifecycle] = useState<TaskLifecycle>("ready");
+  const taskActive = lifecycle === "active" || lifecycle === "completing";
 
   return (
     <ToolPageShell eyebrow={content.eyebrow} title={content.title} description={content.description}>
+      <PracticeFamilyNav />
       <div className="flex flex-col items-center gap-6">
-        {kind === "dictation" ? (
-          <DictationPanel initialLanguage={initialLanguage} lockLanguage={lockLanguage} />
-        ) : (
-          <TranscriptionPanel initialLanguage={initialLanguage} lockLanguage={lockLanguage} />
-        )}
-        <section className="w-full max-w-3xl rounded-xl border bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-          <h2 className="font-bold">{content.guidanceTitle}</h2>
-          <p className="mt-1">{content.guidance}</p>
-        </section>
-        <SkillProfile />
-        <SafeAdSlot slot={slot} context="outside-task" />
-        {route && <RelatedTools route={route} />}
+        <ActiveTaskBoundary state={lifecycle} className="w-full">
+          {kind === "dictation" ? (
+            <DictationPanel initialLanguage={initialLanguage} lockLanguage={lockLanguage} onLifecycleChange={setLifecycle} />
+          ) : (
+            <TranscriptionPanel initialLanguage={initialLanguage} lockLanguage={lockLanguage} onLifecycleChange={setLifecycle} />
+          )}
+        </ActiveTaskBoundary>
+        {!taskActive && <>
+          <section className="w-full max-w-3xl rounded-xl border bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+            <h2 className="font-bold">{content.guidanceTitle}</h2>
+            <p className="mt-1">{content.guidance}</p>
+          </section>
+          <SkillProfile />
+          <SafeAdSlot slot={slot} context="outside-task" />
+          {route && <RelatedTools route={route} />}
+        </>}
       </div>
     </ToolPageShell>
   );

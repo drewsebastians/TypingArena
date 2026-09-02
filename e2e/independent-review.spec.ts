@@ -76,7 +76,7 @@ test.describe("PR4 independent responsive and accessibility review", () => {
     expect(rulePresent).toBe(true);
   });
 
-  test("keyboard reaches desktop navigation, goals, disclosures, and filters", async ({ page }, testInfo) => {
+  test("keyboard reaches desktop navigation, workspace disclosures, and filters", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "Desktop control evidence runs once in the desktop project");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
@@ -85,11 +85,7 @@ test.describe("PR4 independent responsive and accessibility review", () => {
     await firstDesktopMenu.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("menu").first()).toBeVisible();
-
-    const secondGoal = page.locator("[data-goal-id]").nth(1);
-    await secondGoal.focus();
-    await page.keyboard.press("Enter");
-    await expect(secondGoal).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("menu").first()).toContainText("Typing Test");
 
     const disclosure = page.locator("details").first();
     await disclosure.locator("summary").focus();

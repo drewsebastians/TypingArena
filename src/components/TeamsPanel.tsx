@@ -108,40 +108,18 @@ export default function TeamsPanel() {
   }
 
   if (activeId) {
-    return <TeamDetail teamId={activeId} onBack={() => setActiveId(null)} />;
+    return <TeamDetail teamId={activeId} team={teams.find((tm) => tm.id === activeId)} onBack={() => setActiveId(null)} onRefresh={refresh} />;
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       {state === "ready" && (
         <>
-          <div className="mt-6 flex flex-wrap items-end gap-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              New team
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Data Entry Cohort A" maxLength={60} className="mt-1 block w-64 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
-            </label>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const created = await createTeam(sanitizeTitle(name));
-                  const management = await issueResourceManagementToken("team", created.id);
-                  setManagementLinks((prev) => ({ ...prev, [created.id]: `${window.location.origin}${window.location.pathname}?manage=${created.id}#manage=${management.token}` }));
-                  setName("");
-                  await refresh();
-                  track("team_created", {});
-                  track("manage_link_created", { resourceType: "team" });
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Create failed");
-                }
-              }}
-              disabled={name.trim().length < 2}
-              className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
-            >
-              {t("teams.createTeam")}
-            </button>
-            <div className="ml-auto flex items-center gap-2">
-              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="JOIN CODE" aria-label="team code" className="w-36 rounded-lg border px-3 py-2 font-mono uppercase dark:bg-zinc-800" />
+          <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
+            <h2 className="text-sm font-bold">Join a team</h2>
+            <p className="mt-1 text-xs text-zinc-500">Use the code shared by your teacher, manager, or practice group.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="JOIN CODE" aria-label="team code" className="min-h-11 w-36 rounded-lg border px-3 py-2 font-mono uppercase dark:bg-zinc-800" />
               <button
                 type="button"
                 onClick={async () => {
@@ -150,13 +128,14 @@ export default function TeamsPanel() {
                     setCode("");
                     await refresh();
                     track("team_joined", {});
+                    track("teams_intent_selected", { intent: "join" });
                   } catch (e) {
                     track("team_join_failed", {});
                     setError(e instanceof Error ? e.message : "Join failed");
                   }
                 }}
                 disabled={code.length < 6}
-                className="min-h-11 rounded-full border px-5 py-2 text-sm font-semibold disabled:opacity-40"
+                className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-black"
               >
                 {t("teams.joinByCode")}
               </button>
@@ -164,59 +143,105 @@ export default function TeamsPanel() {
           </div>
           {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
 
-          <div className="mt-6 divide-y rounded-xl border bg-white dark:bg-zinc-900">
-            {teams.length === 0 && <p className="px-4 py-6 text-center text-sm text-zinc-500">No teams yet — create one or join with a code.</p>}
+          <section className="mt-6" aria-labelledby="your-teams-title">
+            <div className="flex items-baseline justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Your teams</p>
+                <h2 id="your-teams-title" className="mt-1 text-xl font-black">Practice groups you can open</h2>
+              </div>
+              <span className="text-xs text-zinc-500">{teams.length} total</span>
+            </div>
+            <div className="mt-3 divide-y rounded-xl border bg-white dark:bg-zinc-900">
+            {teams.length === 0 && <p className="px-4 py-6 text-center text-sm text-zinc-500">No teams yet — join one above or create a new group below.</p>}
             {teams.map((tm) => (
               <div key={tm.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <span className="flex-1 font-semibold">{sanitizeTitle(tm.name)}</span>
                 <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-800">{tm.join_code}</span>
                 <span className={`text-xs font-bold uppercase ${tm.role === "owner" ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-500"}`}>{tm.role}</span>
-                <button type="button" onClick={() => setActiveId(tm.id)} className="min-h-11 rounded-full border px-4 py-1.5 text-xs font-semibold">Open room →</button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const management = await issueResourceManagementToken("team", tm.id);
-                      const link = `${window.location.origin}${window.location.pathname}?manage=${tm.id}#manage=${management.token}`;
-                      setManagementLinks((prev) => ({ ...prev, [tm.id]: link }));
-                      await navigator.clipboard.writeText(link);
-                      track("manage_link_created", { resourceType: "team" });
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Could not create management link");
-                    }
-                  }}
-                  className="min-h-11 rounded-full border px-3 py-1.5 text-xs"
-                >
-                  Copy management link
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!window.confirm("Revoke active management links for this team?")) return;
-                    try {
-                      await revokeResourceManagementToken("team", tm.id);
-                      setManagementLinks((prev) => {
-                        const next = { ...prev };
-                        delete next[tm.id];
-                        return next;
-                      });
-                      track("manage_link_revoked", { resourceType: "team" });
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Could not revoke management links");
-                    }
-                  }}
-                  className="min-h-11 text-xs text-red-600 underline"
-                >
-                  Revoke links
-                </button>
-                {tm.role === "owner" ? (
-                  <button type="button" onClick={async () => { if (!window.confirm(`Delete team "${tm.name}" and all its assignments?`)) return; await deleteTeamAsOwner(tm.id); await refresh(); }} className="min-h-11 text-xs text-red-600 underline">Delete</button>
-                ) : (
-                  <button type="button" onClick={async () => { await leaveTeam(tm.id); await refresh(); }} className="min-h-11 text-xs text-red-600 underline">Leave</button>
-              )}
-              {managementLinks[tm.id] && <p className="w-full break-all rounded bg-amber-50 p-2 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLinks[tm.id]}</p>}
+                <button type="button" onClick={() => { setActiveId(tm.id); track("teams_intent_selected", { intent: "open" }); }} className="min-h-11 rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-black">Open</button>
+                <details className="basis-full rounded-lg border p-2 sm:basis-auto sm:border-0 sm:p-0">
+                  <summary className="min-h-11 cursor-pointer list-none px-2 py-2 text-xs font-semibold sm:py-3">Settings</summary>
+                  <div className="mt-2 flex flex-wrap gap-2 sm:absolute sm:z-10 sm:mt-0 sm:rounded-xl sm:border sm:bg-white sm:p-3 sm:shadow-lg dark:sm:border-zinc-800 dark:sm:bg-zinc-900">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const management = await issueResourceManagementToken("team", tm.id);
+                          const link = `${window.location.origin}${window.location.pathname}?manage=${tm.id}#manage=${management.token}`;
+                          setManagementLinks((prev) => ({ ...prev, [tm.id]: link }));
+                          await navigator.clipboard.writeText(link);
+                          track("manage_link_created", { resourceType: "team" });
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Could not create management link");
+                        }
+                      }}
+                      className="min-h-11 rounded-full border px-3 py-1.5 text-xs"
+                    >
+                      Copy management link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm("Revoke active management links for this team?")) return;
+                        try {
+                          await revokeResourceManagementToken("team", tm.id);
+                          setManagementLinks((prev) => {
+                            const next = { ...prev };
+                            delete next[tm.id];
+                            return next;
+                          });
+                          track("manage_link_revoked", { resourceType: "team" });
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Could not revoke management links");
+                        }
+                      }}
+                      className="min-h-11 rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-600"
+                    >
+                      Revoke links
+                    </button>
+                    {tm.role === "owner" ? (
+                      <button type="button" onClick={async () => { if (!window.confirm(`Delete team "${tm.name}" and all its assignments?`)) return; await deleteTeamAsOwner(tm.id); await refresh(); }} className="min-h-11 rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-600">Delete team</button>
+                    ) : (
+                      <button type="button" onClick={async () => { await leaveTeam(tm.id); await refresh(); }} className="min-h-11 rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-600">Leave team</button>
+                    )}
+                    {managementLinks[tm.id] && <p className="w-full break-all rounded bg-amber-50 p-2 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLinks[tm.id]}</p>}
+                  </div>
+                </details>
               </div>
             ))}
+            </div>
+          </section>
+
+          <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
+            <h2 className="text-sm font-bold">Create a team</h2>
+            <p className="mt-1 text-xs text-zinc-500">Start a private practice group and invite people with its join code.</p>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Team name
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Data Entry Cohort A" maxLength={60} className="mt-1 block min-h-11 w-64 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800" />
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const created = await createTeam(sanitizeTitle(name));
+                    const management = await issueResourceManagementToken("team", created.id);
+                    setManagementLinks((prev) => ({ ...prev, [created.id]: `${window.location.origin}${window.location.pathname}?manage=${created.id}#manage=${management.token}` }));
+                    setName("");
+                    await refresh();
+                    track("team_created", {});
+                    track("teams_intent_selected", { intent: "create" });
+                    track("manage_link_created", { resourceType: "team" });
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Create failed");
+                  }
+                }}
+                disabled={name.trim().length < 2}
+                className="min-h-11 rounded-full bg-black px-5 py-2 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-black"
+              >
+                {t("teams.createTeam")}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -228,7 +253,7 @@ export default function TeamsPanel() {
 // Team detail: dashboard + assignment publishing + REAL member runs
 // ---------------------------------------------------------------------------
 
-function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) {
+function TeamDetail({ teamId, team, onBack, onRefresh }: { teamId: string; team?: TeamRecord & { role: string }; onBack: () => void; onRefresh: () => Promise<void> }) {
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
   const [completions, setCompletions] = useState<TeamCompletionRow[]>([]);
   const [members, setMembers] = useState<TeamMemberRow[]>([]);
@@ -243,6 +268,8 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"overview" | "assignments" | "members" | "results" | "settings">("overview");
+  const [managementLink, setManagementLink] = useState<string | null>(null);
   // Ticking "now" lives in state (set from an effect) so render stays pure.
   const [nowTs, setNowTs] = useState(() => 0);
   useEffect(() => {
@@ -376,15 +403,30 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
     <div className="mx-auto max-w-3xl px-4 py-6">
       <button type="button" onClick={onBack} className="mb-4 min-h-11 text-sm underline">← All teams</button>
 
-      {/* Dashboard aggregation */}
-      <h2 className="font-bold">Room dashboard</h2>
-      <div className="mt-2 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
-        <Stat label="Members" value={String(members.length)} />
-        <Stat label="Assignments" value={String(assignments.length)} />
-        <Stat label="Completions" value={String(completions.length)} />
-        <Stat label="Overall rate" value={`${overallRate}%`} />
+      <div className="flex flex-wrap gap-2 border-b pb-3" role="tablist" aria-label="Team workspace sections">
+        {(["overview", "assignments", "members", "results", "settings"] as const).map((item) => (
+          <button type="button" key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-semibold capitalize ${tab === item ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>{item}</button>
+        ))}
       </div>
 
+      {tab === "overview" && (
+        <section className="mt-6" aria-labelledby="team-overview-title">
+          <h2 id="team-overview-title" className="font-bold">Room overview</h2>
+          <div className="mt-2 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+            <Stat label="Members" value={String(members.length)} />
+            <Stat label="Assignments" value={String(assignments.length)} />
+            <Stat label="Completions" value={String(completions.length)} />
+            <Stat label="Overall rate" value={`${overallRate}%`} />
+          </div>
+          <div className="mt-4 rounded-xl border bg-white p-4 text-sm dark:bg-zinc-900">
+            <p className="font-semibold">Keep the room moving</p>
+            <p className="mt-1 text-xs text-zinc-500">Publish reviewed exercises from Assignments, see people in Members, and use Results for completion summaries.</p>
+            <button type="button" onClick={() => setTab(assignments.length > 0 ? "assignments" : "members")} className="mt-3 min-h-11 rounded-full bg-black px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">{assignments.length > 0 ? "Open assignments" : "View members"} →</button>
+          </div>
+        </section>
+      )}
+
+      {tab === "assignments" && <>
       {/* Admin: create assignment */}
       <div className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-bold">Publish an assignment</h3>
@@ -514,6 +556,82 @@ function TeamDetail({ teamId, onBack }: { teamId: string; onBack: () => void }) 
         })}
         {assignments.length === 0 && <p className="px-4 py-6 text-center text-sm text-zinc-500">No assignments yet.</p>}
       </div>
+      </>}
+
+      {tab === "members" && (
+        <section className="mt-6 rounded-xl border bg-white dark:bg-zinc-900" aria-labelledby="team-members-title">
+          <div className="border-b p-4">
+            <h2 id="team-members-title" className="font-bold">Members</h2>
+            <p className="mt-1 text-xs text-zinc-500">Only display names and roles are shown. Contact details never appear here.</p>
+          </div>
+          <div className="divide-y">
+            {members.map((member) => <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"><span className="font-semibold">@{member.username ?? "member"}</span><span className="text-xs font-bold uppercase text-zinc-500">{member.role}</span></div>)}
+            {members.length === 0 && <p className="px-4 py-6 text-center text-sm text-zinc-500">No member records are available yet.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "results" && (
+        <section className="mt-6 rounded-xl border bg-white dark:bg-zinc-900" aria-labelledby="team-results-title">
+          <div className="border-b p-4">
+            <h2 id="team-results-title" className="font-bold">Results</h2>
+            <p className="mt-1 text-xs text-zinc-500">Completion summaries come from real submitted attempts; missing rows stay missing.</p>
+          </div>
+          <div className="divide-y">
+            {perAssignment.map(({ assignment: a, completedCount, avgScore, avgWpm, avgAccuracy }) => <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"><span className="min-w-0 flex-1 truncate font-semibold">{a.title}</span><span>{completedCount}/{members.length || "?"} complete</span><span className="text-xs text-zinc-500">{avgScore === null ? "No score yet" : `avg ${avgScore.toFixed(1)}${avgWpm === null ? "" : ` · ${Math.round(avgWpm)} WPM`}${avgAccuracy === null ? "" : ` · ${Math.round(avgAccuracy)}%`}`}</span></div>)}
+            {assignments.length === 0 && <p className="px-4 py-6 text-center text-sm text-zinc-500">No results until an assignment is published.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "settings" && (
+        <section className="mt-6 rounded-xl border bg-white p-4 dark:bg-zinc-900" aria-labelledby="team-settings-title">
+          <h2 id="team-settings-title" className="font-bold">Room settings</h2>
+          <p className="mt-1 text-xs text-zinc-500">Rare management and membership actions live here so the room stays focused on practice.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const management = await issueResourceManagementToken("team", teamId);
+                  const link = `${window.location.origin}/teams?manage=${teamId}#manage=${management.token}`;
+                  setManagementLink(link);
+                  await navigator.clipboard.writeText(link);
+                  track("manage_link_created", { resourceType: "team" });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not create management link");
+                }
+              }}
+              className="min-h-11 rounded-full border px-4 py-2 text-sm font-semibold"
+            >
+              Copy management link
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm("Revoke active management links for this team?")) return;
+                try {
+                  await revokeResourceManagementToken("team", teamId);
+                  setManagementLink(null);
+                  track("manage_link_revoked", { resourceType: "team" });
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not revoke management links");
+                }
+              }}
+              className="min-h-11 rounded-full border border-red-300 px-4 py-2 text-sm text-red-600"
+            >
+              Revoke links
+            </button>
+            {team?.role === "owner" ? (
+              <button type="button" onClick={async () => { if (!window.confirm("Delete this team and all its assignments?")) return; await deleteTeamAsOwner(teamId); await onRefresh(); onBack(); }} className="min-h-11 rounded-full border border-red-300 px-4 py-2 text-sm text-red-600">Delete team</button>
+            ) : (
+              <button type="button" onClick={async () => { if (!window.confirm("Leave this team?")) return; await leaveTeam(teamId); await onRefresh(); onBack(); }} className="min-h-11 rounded-full border border-red-300 px-4 py-2 text-sm text-red-600">Leave team</button>
+            )}
+          </div>
+          {managementLink && <p className="mt-3 break-all rounded bg-amber-50 p-3 font-mono text-[11px] text-amber-900 dark:bg-amber-950 dark:text-amber-100">Keep this management link private: {managementLink}</p>}
+          {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+        </section>
+      )}
     </div>
   );
 }
