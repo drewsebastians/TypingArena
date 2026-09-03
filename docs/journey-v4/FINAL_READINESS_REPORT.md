@@ -11,6 +11,7 @@ Follow-up closure for `TypingArena_v4_Implementation_Follow_Up_Long_Running_Code
 - Ending commit: final follow-up checkpoint, reported by `git rev-parse HEAD` in the owner handoff
 - Remote: `https://github.com/drewsebastians/TypingArena.git`
 - `origin/main` remains unchanged; branch relationship at reconciliation: 0 behind / 1 ahead
+- Draft PR: [#15](https://github.com/drewsebastians/TypingArena/pull/15)
 - No merge, deployment, DNS change, analytics-provider change, or AdSense change was performed. The dedicated branch push and draft-PR handoff are the only remote actions authorized by and performed for this follow-up.
 
 ## B. Changed areas
@@ -75,4 +76,4 @@ An owner must provide the v4 production site/backend environment, run the produc
 
 ## H. Verdict
 
-**READY FOR DRAFT PR REVIEW.** The v4 UX implementation, reconciliation matrix, source audits, static build, unit tests, responsive E2E suite, expanded browser evidence, demo-mode readiness checks, and protected-domain smoke check are complete. Live Teams/Assessments backend proof and production deployment remain owner-controlled follow-up actions; this branch is being handed off through a draft PR and is not being merged or redeployed by this run.
+**READY FOR DRAFT PR REVIEW.** The v4 UX implementation, reconciliation matrix, source audits, static build, unit tests, responsive E2E suite, expanded browser evidence, demo-mode readiness checks, and protected-domain smoke check are complete. Live Teams/Assessments backend proof and production deployment remain owner-controlled follow-up actions; [draft PR #15](https://github.com/drewsebastians/TypingArena/pull/15) is review-only and this run does not merge or redeploy it.
