@@ -17,9 +17,11 @@ updated integrated blueprint is present at
 | v4 UX head reviewed and merged | `2cd8c3fda032c59e23a319293fc473da1c10e657` → merge `85960725a246608b973cc572e3d97ac132d6af76` |
 | Production hotfix PR | [PR #16](https://github.com/drewsebastians/TypingArena/pull/16), merged 2026-09-03T05:07:13Z |
 | Hotfix | `670e0622b2ed03904b3888b6cbef02dc36a668f1` → merge `648cc81221b4da95447a06cbba0a1d6c0e2459df` |
-| Final production application SHA | `648cc81221b4da95447a06cbba0a1d6c0e2459df` |
+| Runtime application SHA | `648cc81221b4da95447a06cbba0a1d6c0e2459df` |
 | Canonical production URL | `https://typingarena.click/` |
-| Final Pages deployment | Deployment `6237387719`, status `success`, environment URL `https://typingarena.click/` |
+| Hotfix production Pages deployment | Deployment `6237387719`, status `success`, environment URL `https://typingarena.click/` |
+| Closure-record main revision | `2a69a70877f67094767ac0b41d291a4bc96cecd8` (documentation-only merge on top of the runtime SHA) |
+| Closure-record production deployment | [Run 33720750185](https://github.com/drewsebastians/TypingArena/actions/runs/33720750185), status `success`, environment URL `https://typingarena.click/` |
 
 The hotfix serializes the shared `submit_attempt` RPC payload into the
 snake_case contract consumed by the production database function. It includes
@@ -61,6 +63,8 @@ final explicit production deployment.
 | v4 explicit production deploy | [Run 33714198801](https://github.com/drewsebastians/TypingArena/actions/runs/33714198801) | `85960725a246608b973cc572e3d97ac132d6af76` | PASS |
 | hotfix automatic post-merge canary | [Run 33717558425](https://github.com/drewsebastians/TypingArena/actions/runs/33717558425) | `648cc81221b4da95447a06cbba0a1d6c0e2459df` | PASS; build and deploy jobs green |
 | final explicit production deploy | [Run 33717763492](https://github.com/drewsebastians/TypingArena/actions/runs/33717763492) | `648cc81221b4da95447a06cbba0a1d6c0e2459df` | PASS; production readiness, build, artifact, and deploy green |
+| closure-record automatic post-merge canary | [Run 33720599853](https://github.com/drewsebastians/TypingArena/actions/runs/33720599853) | `2a69a70877f67094767ac0b41d291a4bc96cecd8` | PASS; build and deploy jobs green |
+| closure-record explicit production deploy | [Run 33720750185](https://github.com/drewsebastians/TypingArena/actions/runs/33720750185) | `2a69a70877f67094767ac0b41d291a4bc96cecd8` | PASS; production readiness, build, artifact, and deploy green |
 
 ## 4. Production route, SEO, and asset smoke
 
@@ -188,7 +192,8 @@ rollback mechanism.
 ## 11. Final statement
 
 **PRODUCTION DEPLOYMENT COMPLETE** — the v4 blueprint-driven UX journey and
-the shared-attempt serialization hotfix are merged, the final production
-commit is deployed at `https://typingarena.click/`, public and browser smoke
-checks pass, live shared Team and Assessment flows pass with disposable data
-cleaned up, and no critical residual issue remains.
+the shared-attempt serialization hotfix are merged, runtime application SHA
+`648cc81221b4da95447a06cbba0a1d6c0e2459df` is deployed at
+`https://typingarena.click/` through the closure-record production workflow,
+public and browser smoke checks pass, live shared Team and Assessment flows
+pass with disposable data cleaned up, and no critical residual issue remains.
