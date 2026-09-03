@@ -81,6 +81,11 @@ test.describe("PR4 independent responsive and accessibility review", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 
+    await expect(page.locator('nav[aria-label="Primary"]')).toContainText("Practice");
+    await expect(page.locator('nav[aria-label="Primary"]')).toContainText("Arena");
+    await expect(page.locator('nav[aria-label="Primary"]')).toContainText("Progress");
+    await expect(page.locator('nav[aria-label="Primary"]')).toContainText("For Teams");
+
     const firstDesktopMenu = page.locator('nav[aria-label="Primary"] button').first();
     await firstDesktopMenu.focus();
     await page.keyboard.press("Enter");
@@ -97,6 +102,20 @@ test.describe("PR4 independent responsive and accessibility review", () => {
     await indonesiaFilter.focus();
     await page.keyboard.press("Enter");
     await expect(indonesiaFilter).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("Arena and For Teams pages expose shared family navigation", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "Shared navigation evidence runs once in the desktop project");
+    await page.goto("/daily-arena");
+    await expect(page.locator('[data-section-nav="arena"]')).toBeVisible();
+    await expect(page.locator('[data-section-nav="arena"]')).toContainText("Leaderboard");
+    await page.goto("/leaderboard");
+    await expect(page.locator('[data-section-nav="arena"] a[aria-current="page"]')).toContainText("Leaderboard");
+    await page.goto("/teams");
+    await expect(page.locator('[data-section-nav="teams"]')).toBeVisible();
+    await expect(page.locator('[data-section-nav="teams"]')).toContainText("Custom Tests");
+    await page.goto("/custom");
+    await expect(page.locator('[data-section-nav="teams"] a[aria-current="page"]')).toContainText("Custom Tests");
   });
 
   test("active practice suppresses route-level ads for typing and audio modes", async ({ page }) => {

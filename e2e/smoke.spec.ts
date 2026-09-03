@@ -309,9 +309,20 @@ test.describe("keyboard accessibility sanity", () => {
     const words = "the quick brown fox jumps over the lazy dog ".repeat(30);
     await input.pressSequentially(words, { delay: (14_000) / words.length });
     await expect(page.getByRole("heading", { name: /your result/i })).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("[data-typing-result]")).toHaveCount(1);
+    await expect(page.locator("[data-primary-continuation]")).toHaveCount(1);
+    await expect(page.locator("[data-secondary-continuation]")).toHaveCount(1);
+    await expect(page.locator("[data-tertiary-actions]")).toHaveCount(1);
+    await expect(page.locator("[data-next-step]")).toHaveCount(0);
     await page.keyboard.press("Tab"); // focus moves into result actions
     const focused = page.evaluate(() => document.activeElement?.textContent ?? "");
     expect((await focused).length).toBeGreaterThan(0);
+  });
+
+  test("invalid assessment invites fail closed without exposing assessment content", async ({ page }) => {
+    await page.goto("/assessments?invite=NOT-VALID");
+    await expect(page.getByRole("heading", { name: /invite invalid|invite revoked|invite expired|assessment not open/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/module|approx\. duration|begin assessment/i)).toHaveCount(0);
   });
 });
 
