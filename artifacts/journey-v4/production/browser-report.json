@@ -1,0 +1,202 @@
+{
+  "baseUrl": "https://typingarena.click",
+  "capturedAt": "2026-09-03T05:36:56.629Z",
+  "screenshots": [
+    {
+      "name": "home-initial-desktop-1440x900.png",
+      "route": "/",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "home-initial-mobile-390x844.png",
+      "route": "/",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "name": "home-initial-stress-320x568.png",
+      "route": "/",
+      "width": 320,
+      "height": 568
+    },
+    {
+      "name": "home-result-desktop-1440x900.png",
+      "route": "/?duration=15",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "daily-arena-desktop-1440x900.png",
+      "route": "/daily-arena",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "progress-desktop-1440x900.png",
+      "route": "/progress",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "teams-desktop-1440x900.png",
+      "route": "/teams",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "assessment-candidate-invalid-mobile-390x844.png",
+      "route": "/assessments?invite=NOT-VALID",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "name": "privacy-consent-desktop-1440x900.png",
+      "route": "/privacy",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "checks": [
+    {
+      "name": "Home real typing workspace visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home has no goal gate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace embeds no audio engine",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace has a real input",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home real typing workspace visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home has no goal gate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace embeds no audio engine",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace has a real input",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home real typing workspace visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home has no goal gate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace embeds no audio engine",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace has a real input",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home real typing workspace visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home has no goal gate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace embeds no audio engine",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Home workspace has a real input",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Result has one primary continuation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Result has one secondary continuation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Result removes duplicate next-step card",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typing ad slot is available before the task starts",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typing ad slot disappears while the task is active",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Invalid candidate invite fails closed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Consent banner appears on a fresh visit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "No analytics/ad provider loads before consent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "No uncaught production page errors",
+      "passed": true,
+      "detail": "0 page errors"
+    },
+    {
+      "name": "No production console errors",
+      "passed": true,
+      "detail": "0 console errors"
+    }
+  ],
+  "providerRequestsBeforeConsent": [],
+  "providerRequestsAfterConsent": [],
+  "pageErrors": [],
+  "expectedConsoleErrors": [
+    {
+      "route": "/assessments?invite=NOT-VALID",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    }
+  ],
+  "consoleErrors": []
+}

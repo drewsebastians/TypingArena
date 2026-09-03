@@ -1,0 +1,167 @@
+{
+  "baseUrl": "https://typingarena.click",
+  "testedAt": "2026-09-03T05:30:19.652Z",
+  "checks": [
+    {
+      "name": "Ordinary Home practice completes locally",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Ordinary Home practice makes no shared-backend request",
+      "passed": true,
+      "detail": "0 request(s)"
+    },
+    {
+      "name": "Team create returns a join code",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Team management link identifies the created resource",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Team owner publishes a real assignment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Second anonymous session joins the team by code",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assignment completion displays a server-derived score",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Owner dashboard aggregates the member completion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Clean session recovers the exact Team resource by management link",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Management-link rotation issues a fresh capability",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Rotated Team management link is revocable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Disposable Team and assignment data are deleted after the live round-trip",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assessment create returns an invite code",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assessment create issues a management capability",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Candidate resolves the saved non-default module sequence",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Candidate completes and submits the assessment through the public invite",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Only the organizer sees the candidate summary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Clean session recovers the exact Assessment resource by management link",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assessment management-link rotation issues a fresh capability",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assessment management capability is revocable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revoked assessment invite fails closed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Assessment invite revocation is visible to candidates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Organizer privacy deletion removes the disposable shared Assessment data",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Deleted Assessment invite no longer resolves",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Live backend flow has no uncaught page errors",
+      "passed": true,
+      "detail": "0 page error(s)"
+    },
+    {
+      "name": "Live backend flow has no unexpected console errors",
+      "passed": true,
+      "detail": "0 console error(s)"
+    }
+  ],
+  "operations": [
+    "ordinary local Home practice completed with shared backend untouched",
+    "Team assignment completed from a real timed exercise",
+    "Team management capability rotated, revoked, and resource deleted",
+    "Assessment candidate submission appeared only in organizer summaries",
+    "Assessment invite revoked and shared organizer data deleted"
+  ],
+  "pageErrors": [],
+  "expectedConsoleErrors": [
+    {
+      "route": "/assessments?invite=%5Bopaque%5D",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "route": "/assessments?invite=%5Bopaque%5D",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    }
+  ],
+  "consoleErrors": [],
+  "backendErrors": [
+    {
+      "route": "/assessments?invite=%5Bopaque%5D",
+      "status": 400,
+      "path": "/rest/v1/rpc/fetch_assessment_definition"
+    },
+    {
+      "route": "/assessments?invite=%5Bopaque%5D",
+      "status": 400,
+      "path": "/rest/v1/rpc/fetch_assessment_definition"
+    }
+  ]
+}
