@@ -20,7 +20,7 @@ import {
   loadTypingHistory,
 } from "./history";
 import { track } from "./analytics";
-import { fetchMyAttempts, getClient, getCurrentUser } from "./remote";
+import { fetchMyAttempts, getClient, getCurrentUser, serializeSubmitAttemptPayload } from "./remote";
 import type {
   DictationResult,
   TranscriptionResult,
@@ -286,7 +286,7 @@ export async function flushQueue(): Promise<{ sent: number; remaining: number }>
       let outcome: SubmissionOutcome;
       try {
         const { data, error } = await client.rpc("submit_attempt", {
-          p: item.payload as unknown as Record<string, unknown>,
+          p: serializeSubmitAttemptPayload(item.payload),
         });
         outcome = classifySubmissionResult(data, error);
       } catch {

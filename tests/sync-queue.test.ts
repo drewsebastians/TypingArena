@@ -22,6 +22,7 @@ vi.mock("@/lib/remote", () => ({
   getClient: () => ({ rpc: rpcMock }),
   getCurrentUser: userMock,
   fetchMyAttempts: vi.fn(async () => []),
+  serializeSubmitAttemptPayload: (p: { clientId: string }) => ({ client_id: p.clientId }),
 }));
 
 function payload(over: Partial<SubmitAttemptPayload> = {}): SubmitAttemptPayload {
