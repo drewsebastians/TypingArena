@@ -12,6 +12,7 @@ import { SafeAdSlot } from "@/components/AdSlot";
 import ToolPageShell from "@/components/tool/ToolPageShell";
 import RelatedTools from "@/components/tool/RelatedTools";
 import { getRouteByPath } from "@/lib/routeRegistry";
+import PracticeFamilyNav from "@/components/PracticeFamilyNav";
 
 type LenFilter = "any" | "short" | "long";
 
@@ -47,6 +48,7 @@ export default function TranscriptionLibraryPanel() {
         title={clip.topic}
         description={`${clip.language === "en" ? "English" : "Bahasa Indonesia"} · ${clip.difficulty} · ~${clip.durationSec}s · voice ${clip.speakerVoice}`}
       >
+        <PracticeFamilyNav />
         <button type="button" onClick={() => setActiveId(null)} className="mb-3 min-h-11 text-sm underline">← {locale === "id" ? "kembali ke pustaka" : "back to library"}</button>
         <TranscriptionEngine key={clip.id} item={clip} />
         <SafeAdSlot slot="transcription-library-result" context="outside-task" className="mx-auto mt-8 max-w-3xl" />
@@ -61,6 +63,7 @@ export default function TranscriptionLibraryPanel() {
       title={locale === "id" ? "Pustaka Transkripsi" : t("library.title")}
       description={locale === "id" ? `Setiap klip adalah narasi orisinal yang ditinjau dengan audio statis (${TRANSCRIPTION_CLIPS.length} klip, 30 detik+). Transkrip tersembunyi sampai dikirim.` : `Every clip is an original reviewed narration with static audio (${TRANSCRIPTION_CLIPS.length} clips, 30s+). The transcript stays hidden until you submit.`}
     >
+      <PracticeFamilyNav />
       <div className="mx-auto max-w-4xl">
 
       <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label={locale === "id" ? "Filter klip" : "Clip filters"}>

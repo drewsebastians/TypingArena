@@ -50,7 +50,7 @@ function FriendsInner() {
       {!IS_REMOTE_CONFIGURED && (
         <div className="mt-4 rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-900">
           Cross-device challenges need the shared backend (Supabase) which isn&apos;t configured in this deployment.
-          Operators: see README → “Shared competition setup”.
+          Shared challenge storage is unavailable right now; local practice is still available.
         </div>
       )}
 

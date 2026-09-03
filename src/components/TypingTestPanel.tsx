@@ -9,7 +9,6 @@ import { ENGLISH_CORPUS } from "@/lib/content/english";
 import { INDONESIAN_CORPUS } from "@/lib/content/indonesian";
 import type { CorpusItem, Language, Mode, TypingResult } from "@/lib/types";
 import type { TaskLifecycle } from "@/lib/taskLifecycle";
-import NextStepCard from "@/components/tool/NextStepCard";
 import { track } from "@/lib/analytics";
 
 const DURATIONS = [15, 30, 60, 300] as const;
@@ -107,14 +106,7 @@ export default function TypingTestPanel({
           autoFocus={autoFocus}
         />
       ) : (
-        <>
-          <ResultCard result={result} onNext={nextExercise} />
-          <NextStepCard
-            title="How is your listening?"
-            body="Top players train both visual typing and listening-to-text. A 30-second dictation proves it."
-            steps={[{ href: "/dictation", label: "Go to Dictation" }]}
-          />
-        </>
+        <ResultCard result={result} onNext={nextExercise} />
       )}
     </div>
   );

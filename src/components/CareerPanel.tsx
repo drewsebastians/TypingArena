@@ -18,6 +18,7 @@ import { loadCareerHistory, saveCareerResult } from "@/lib/history";
 import { t } from "@/lib/i18n";
 import { useLocale } from "@/components/LocaleProvider";
 import type { CorpusItem, DictationResult, TranscriptionResult, TypingResult } from "@/lib/types";
+import { track } from "@/lib/analytics";
 
 function pickCorpus(modeRef: string, language: "en" | "id", seedKey: string): CorpusItem {
   const base = language === "en" ? ENGLISH_CORPUS : INDONESIAN_CORPUS;
@@ -127,6 +128,8 @@ export default function CareerPanel() {
 
   // ---- views ---------------------------------------------------------------
   if (result && active) {
+    const weakest = result.modules.reduce((lowest, module) => module.accuracy < lowest.accuracy ? module : lowest, result.modules[0]);
+    const weakestHref = weakest.kind === "typing" ? "/typing-test?mode=copy-pro" : weakest.kind === "dictation" ? "/dictation" : "/transcription-practice";
     return (
       <div className="mx-auto max-w-3xl">
         <h2 className="text-2xl font-black">
@@ -143,6 +146,11 @@ export default function CareerPanel() {
             </div>
           ))}
         </div>
+        {weakest && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-800 dark:text-amber-300">Recommended focus</p>
+          <p className="mt-1 text-sm text-amber-950 dark:text-amber-100">Revisit {weakest.label} ({Math.round(weakest.accuracy)}% accuracy) while the result is fresh.</p>
+          <Link href={weakestHref} onClick={() => track("career_weak_skill_clicked", { skill: weakest.kind })} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-black px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">Practice this skill →</Link>
+        </div>}
         <div className="mt-4 flex gap-2">
           <button type="button" onClick={() => start(active)} className="min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">Retake</button>
           <Link href="/progress" className="inline-flex min-h-11 items-center rounded-full border px-5 py-2 text-sm">View history</Link>

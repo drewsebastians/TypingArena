@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { buildSkillMatrix, nextExerciseRecommendation } from "@/lib/skillMatrix";
+import { getTrack } from "@/lib/career";
 import { getStreak, loadCareerHistory, loadDictationHistory, loadTranscriptionHistory, loadTypingHistory } from "@/lib/history";
 import { getLocalNickname, setLocalNickname } from "@/lib/nickname";
 import { IS_REMOTE_CONFIGURED } from "@/lib/config";
@@ -14,10 +15,10 @@ import { SafeAdSlot } from "@/components/AdSlot";
 import ToolPageShell from "@/components/tool/ToolPageShell";
 
 export default function ProgressPage() {
-  const [typing, setTyping] = useState(loadTypingHistory);
-  const [dictation, setDictation] = useState(loadDictationHistory);
-  const [transcription, setTranscription] = useState(loadTranscriptionHistory);
-  const [career, setCareer] = useState(loadCareerHistory);
+  const [typing, setTyping] = useState<ReturnType<typeof loadTypingHistory>>([]);
+  const [dictation, setDictation] = useState<ReturnType<typeof loadDictationHistory>>([]);
+  const [transcription, setTranscription] = useState<ReturnType<typeof loadTranscriptionHistory>>([]);
+  const [career, setCareer] = useState<ReturnType<typeof loadCareerHistory>>([]);
   const [streak, setStreak] = useState(0);
   const [pending, setPending] = useState(0);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -25,6 +26,10 @@ export default function ProgressPage() {
 
   useEffect(() => {
     track("history_viewed", { source: "progress" });
+    setTyping(loadTypingHistory());
+    setDictation(loadDictationHistory());
+    setTranscription(loadTranscriptionHistory());
+    setCareer(loadCareerHistory());
     setStreak(getStreak().current);
     setPending(pendingSyncCount());
     const id = window.setInterval(() => setPending(pendingSyncCount()), 4000);
@@ -64,28 +69,14 @@ export default function ProgressPage() {
         <Stat label="Transcriptions" value={String(transcription.length)} />
         <Stat label="Streak" value={`${streak}d`} sub="Asia/Jakarta days" />
       </div>
-      {career.length > 0 && <p className="mt-2 text-xs text-zinc-500">{career.length} career assessment{career.length === 1 ? "" : "s"} on record — see the <Link href="/career" className="underline">Career page</Link>.</p>}
-
-      <NicknamePanel />
-
-      {pending > 0 && (
-        <div role="status" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          <span>{pending} result{pending === 1 ? "" : "s"} you chose to share are waiting to send.</span>
-          <button type="button" onClick={() => void syncNow()} className="min-h-11 rounded-full border px-3 py-1 font-semibold">Send chosen shared results</button>
-          <span className="basis-full">Only results from an explicit shared action appear here; ordinary practice stays on this device.</span>
-          {syncMsg && <span>{syncMsg}</span>}
-        </div>
-      )}
-      {pending === 0 && syncMsg && <p role="status" className="mt-2 text-xs text-emerald-700">{syncMsg}</p>}
-
-      <div className="mt-6 rounded-2xl bg-black p-4 text-white dark:bg-white dark:text-black">
+      <div data-recommended-next className="mt-6 rounded-2xl bg-black p-4 text-white dark:bg-white dark:text-black">
         <div className="text-xs uppercase tracking-widest opacity-60">Recommended next</div>
         <div className="text-lg font-bold">{rec.label}</div>
         <div className="text-sm opacity-80">{rec.reason}</div>
         <Link href={rec.href} onClick={() => track("next_recommended_start", { label: rec.label })} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black dark:bg-black dark:text-white">Start →</Link>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6" data-practice-history>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Progress history">
           {(["typing", "dictation", "transcription"] as const).map((item) => <button type="button" key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === item ? "bg-black text-white dark:bg-white dark:text-black" : "border bg-white dark:bg-zinc-900"}`}>{item}</button>)}
         </div>
@@ -96,9 +87,47 @@ export default function ProgressPage() {
         </div>
       </div>
 
+      {career.length > 0 && <CareerHistory history={career} />}
+
+      <details className="mt-6 rounded-2xl border bg-white p-4 dark:bg-zinc-900" data-profile-panel>
+        <summary className="cursor-pointer list-none text-sm font-bold">Nickname & shared profile</summary>
+        <div className="mt-2 text-xs text-zinc-500">Keep local profile controls out of the main practice flow; sharing remains optional.</div>
+        <NicknamePanel />
+      </details>
+
+      {pending > 0 && (
+        <div role="status" className="mt-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" data-pending-sync>
+          <span>{pending} result{pending === 1 ? "" : "s"} you chose to share are waiting to send.</span>
+          <button type="button" onClick={() => void syncNow()} className="min-h-11 rounded-full border px-3 py-1 font-semibold">Send chosen shared results</button>
+          <span className="basis-full">Only results from an explicit shared action appear here; ordinary practice stays on this device.</span>
+          {syncMsg && <span>{syncMsg}</span>}
+        </div>
+      )}
+      {pending === 0 && syncMsg && <p role="status" className="mt-2 text-xs text-emerald-700">{syncMsg}</p>}
+
       <PrivacyPanel onDeleted={refresh} />
       <SafeAdSlot slot="progress" context="outside-task" className="mt-8" />
     </ToolPageShell>
+  );
+}
+
+function CareerHistory({ history }: { history: ReturnType<typeof loadCareerHistory> }) {
+  return (
+    <section className="mt-6 rounded-2xl border bg-white p-4 dark:bg-zinc-900" data-career-history aria-labelledby="career-history-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Career history</p>
+          <h2 id="career-history-title" className="mt-1 text-lg font-black">Practice benchmarks</h2>
+        </div>
+        <Link href="/career" className="text-sm font-semibold underline">Open Career Mode →</Link>
+      </div>
+      <div className="mt-3 divide-y rounded-xl border">
+        {history.slice(0, 10).map((result) => {
+          const track = getTrack(result.trackId);
+          return <div key={`${result.trackId}-${result.completedAt}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm"><span className="font-semibold">{track?.name ?? result.trackId}</span><span>{result.score} / 100 · {result.band}</span><span className="text-xs text-zinc-500">{new Date(result.completedAt).toLocaleDateString()}</span></div>;
+        })}
+      </div>
+    </section>
   );
 }
 

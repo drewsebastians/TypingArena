@@ -11,6 +11,7 @@ import ToolPageShell from "@/components/tool/ToolPageShell";
 import RelatedTools from "@/components/tool/RelatedTools";
 import { SafeAdSlot } from "@/components/AdSlot";
 import { getRouteByPath } from "@/lib/routeRegistry";
+import ArenaNav from "@/components/ArenaNav";
 
 type ModeFilter = "sprint" | "daily" | "all";
 type LangFilter = "en" | "id" | "all";
@@ -62,6 +63,7 @@ export default function LeaderboardPage() {
       title="Leaderboard"
       description="Ranked attempts only — pasted, burst-flagged, or practice results never appear. Every accepted attempt records its scoring version for honest comparisons."
     >
+      <ArenaNav />
       <div className="mx-auto max-w-3xl">
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -77,7 +79,7 @@ export default function LeaderboardPage() {
           <p className="p-6 text-center text-sm text-zinc-500">
             Shared leaderboards require the competition backend (Supabase). This deployment doesn&apos;t have it configured yet —
             complete tests locally and see your own history on <Link href="/progress" className="underline">Progress</Link>.
-            Operators: run <code>supabase/migrations/0001_init.sql</code> and set <code>NEXT_PUBLIC_SUPABASE_URL</code> + <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+            Shared ranking is unavailable right now; no placeholder competitors are shown.
           </p>
         )}
         {state === "error" && <p className="p-6 text-center text-sm text-red-600">Could not load leaderboard: {error}</p>}

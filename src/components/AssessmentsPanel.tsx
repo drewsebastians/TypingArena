@@ -86,7 +86,7 @@ interface CandidateModuleResult {
   accuracy: number;
 }
 
-type CandidateState = "resolving" | "ready" | "invalid" | "done";
+type CandidateState = "resolving" | "intro" | "ready" | "invalid" | "done";
 interface CandidateRejection {
   heading: string;
   detail: string;
@@ -113,7 +113,7 @@ function CandidateFlow({ invite }: { invite: string }) {
         if (cancelled) return;
         setTitle(def.title);
         setModules(def.modules);
-        setState("ready");
+        setState("intro");
       } catch (e) {
         if (!cancelled) {
           track("assessment_invite_invalid", {});
@@ -194,6 +194,24 @@ function CandidateFlow({ invite }: { invite: string }) {
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
         <h1 className="text-2xl font-black">{rejection.heading}</h1>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{rejection.detail}</p>
+      </div>
+    );
+  }
+
+  if (state === "intro") {
+    const approximateSeconds = modules.reduce((sum, module) => sum + Number(module.durationSec ?? 0), 0);
+    return (
+      <div className="mx-auto max-w-xl px-4 py-12">
+        <div className="rounded-2xl border bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Practice assessment</p>
+          <h1 className="mt-2 text-2xl font-black">{sanitizeTitle(title)}</h1>
+          <div className="mt-5 grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800"><div className="text-2xl font-black">{modules.length}</div><div className="text-xs text-zinc-500">modules</div></div>
+            <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800"><div className="text-2xl font-black">{approximateSeconds > 0 ? `${Math.ceil(approximateSeconds / 60)} min` : "—"}</div><div className="text-xs text-zinc-500">approx. duration</div></div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-zinc-600 dark:text-zinc-300">Complete the saved modules in order. Your results are shared with the organizer for this assessment; individual answers are not published publicly.</p>
+          <button type="button" onClick={() => { setState("ready"); track("assessment_begin_clicked", { modules: modules.length }); }} className="mt-5 min-h-11 rounded-full bg-black px-6 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">Begin assessment →</button>
+        </div>
       </div>
     );
   }

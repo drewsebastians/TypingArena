@@ -28,6 +28,7 @@ import RelatedTools from "@/components/tool/RelatedTools";
 import NextStepCard from "@/components/tool/NextStepCard";
 import { getRouteByPath } from "@/lib/routeRegistry";
 import { useLocale } from "@/components/LocaleProvider";
+import ArenaNav from "@/components/ArenaNav";
 
 export default function DailyArena() {
   const { locale } = useLocale();
@@ -101,6 +102,7 @@ export default function DailyArena() {
       title={`${formatDailyTitle(challenge.iso)} ${locale === "id" ? "Tantangan" : "Challenge"}`}
       description={locale === "id" ? "Satu tantangan standar per hari. Mainkan secara lokal, lalu publikasikan hasil bersih ke papan bersama saat backend kompetisi tersedia." : "One standardized challenge per day. Play locally, then publish a clean result to the shared board when the competition backend is available."}
     >
+      <ArenaNav />
       <div className="mx-auto max-w-3xl">
       <div className="rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 p-6 text-white">
         <div className="text-xs uppercase tracking-widest opacity-80">Daily Arena • {iso} • resets midnight Asia/Jakarta</div>
@@ -138,7 +140,7 @@ export default function DailyArena() {
               {result.integrity !== "ranked" && (
                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{result.integrity === "flagged" ? "Flagged attempts don't enter the ranked board." : "Practice results stay off the ranked board."}</p>
               )}
-              {!IS_REMOTE_CONFIGURED && <p className="mt-2 text-xs text-zinc-500">Saved to this device. Shared boards require backend configuration (see README).</p>}
+              {!IS_REMOTE_CONFIGURED && <p className="mt-2 text-xs text-zinc-500">Saved to this device. Shared ranking is unavailable right now; your score remains local.</p>}
             </div>
           )
         ) : (
@@ -152,7 +154,7 @@ export default function DailyArena() {
         {boardState === "loading" && <p className="py-6 text-center text-sm text-zinc-500">Loading…</p>}
         {boardState === "unconfigured" && (
           <p className="py-4 text-center text-sm text-zinc-500">
-            The shared board needs the competition backend. Your attempt is still scored and saved locally. Operators: see <code>supabase/migrations</code> in the repo README.
+            The shared board needs the competition backend. Your attempt is still scored and saved locally; shared ranking is unavailable right now.
           </p>
         )}
         {boardState === "error" && <p className="py-4 text-center text-sm text-red-600">Could not load board: {errorMsg}</p>}
