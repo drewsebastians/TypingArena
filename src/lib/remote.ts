@@ -154,6 +154,40 @@ export interface SubmitAttemptPayload {
   metrics?: Record<string, unknown>;
 }
 
+/**
+ * The browser-facing evidence model is camelCase, while the authoritative SQL
+ * RPC consumes a snake_case JSON contract. Keep the translation at this
+ * boundary so direct shared submissions and queued retries send identical
+ * evidence and the server can bind completions to the persisted client_id.
+ */
+export function serializeSubmitAttemptPayload(p: SubmitAttemptPayload): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries({
+      client_id: p.clientId,
+      exercise_id: p.exerciseId,
+      exercise_version: p.exerciseVersion,
+      scoring_version: p.scoringVersion,
+      normalization_version: p.normalizationVersion,
+      mode: p.mode,
+      language: p.language,
+      duration_sec: p.durationSec,
+      elapsed_ms: p.elapsedMs,
+      typed_chars: p.typedChars,
+      correct_chars: p.correctChars,
+      uncorrected_errors: p.uncorrectedErrors,
+      focus_lost_count: p.focusLostCount,
+      paste_flag: p.pasteFlag,
+      burst_flag: p.burstFlag,
+      claimed_wpm: p.claimedWpm,
+      claimed_accuracy: p.claimedAccuracy,
+      integrity: p.integrity,
+      challenge_date: p.challengeDate,
+      challenge_version: p.challengeVersion,
+      metrics: p.metrics,
+    }).filter(([, value]) => value !== undefined),
+  );
+}
+
 export interface SubmitResponse {
   accepted?: boolean;
   integrity?: string;
@@ -171,7 +205,7 @@ export interface SubmitResponse {
 export async function submitAttempt(p: SubmitAttemptPayload): Promise<SubmitResponse> {
   const c = getClient();
   await ensureSharedIdentity();
-  const { data, error } = await c.rpc("submit_attempt", { p: p as unknown as Record<string, unknown> });
+  const { data, error } = await c.rpc("submit_attempt", { p: serializeSubmitAttemptPayload(p) });
   if (error) throw new Error(`Attempt rejected: ${error.message}`);
   return (data ?? {}) as SubmitResponse;
 }
