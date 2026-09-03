@@ -11,7 +11,7 @@ Follow-up closure for `TypingArena_v4_Implementation_Follow_Up_Long_Running_Code
 - Ending commit: final follow-up checkpoint, reported by `git rev-parse HEAD` in the owner handoff
 - Remote: `https://github.com/drewsebastians/TypingArena.git`
 - `origin/main` remains unchanged; branch relationship at reconciliation: 0 behind / 1 ahead
-- No merge, deployment, DNS change, remote push, PR creation, analytics-provider change, or AdSense change was performed.
+- No merge, deployment, DNS change, analytics-provider change, or AdSense change was performed. The dedicated branch push and draft-PR handoff are the only remote actions authorized by and performed for this follow-up.
 
 ## B. Changed areas
 
@@ -71,8 +71,8 @@ The original after set covers Home desktop/mobile/320px/tablet, Progress, Daily 
 
 ## G. External actions required for production closure
 
-An owner must provide the v4 production site/backend environment, run the production readiness gate, deploy through the normal hosting workflow, and perform live smoke tests for Teams, assignments, assessments, and any configured analytics/ad providers. DNS and third-party configuration should be verified separately by the deployment owner. The existing custom-domain deployment itself is healthy and was verified read-only; none of the v4 external mutations were authorized or performed here.
+An owner must provide the v4 production site/backend environment, run the production readiness gate, merge through the review workflow, deploy through the established hosting workflow, and perform live smoke tests for Teams, assignments, assessments, and any configured analytics/ad providers. DNS and third-party configuration should be verified separately by the deployment owner. The existing custom-domain deployment itself is healthy and was verified read-only; no v4 production mutation was performed here.
 
 ## H. Verdict
 
-**READY FOR OWNER REVIEW.** The v4 UX implementation, reconciliation matrix, source audits, static build, unit tests, responsive E2E suite, expanded browser evidence, demo-mode readiness checks, and protected-domain smoke check are complete. Live Teams/Assessments backend proof and deployment of this branch remain owner-controlled follow-up actions; production was not merged or redeployed by this run.
+**READY FOR DRAFT PR REVIEW.** The v4 UX implementation, reconciliation matrix, source audits, static build, unit tests, responsive E2E suite, expanded browser evidence, demo-mode readiness checks, and protected-domain smoke check are complete. Live Teams/Assessments backend proof and production deployment remain owner-controlled follow-up actions; this branch is being handed off through a draft PR and is not being merged or redeployed by this run.

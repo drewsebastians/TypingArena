@@ -34,4 +34,4 @@ Required baseline and after captures are stored under `artifacts/journey-v4/befo
 
 ## External boundary
 
-Live v4 production verification still requires owner-controlled `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, plus the deployment/provider checks described in the final readiness report. The existing `https://typingarena.click/` deployment passed its read-only smoke check. No DNS, hosting, branch push, merge, PR, analytics-provider, or AdSense mutation was performed.
+Live v4 production verification still requires owner-controlled `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, plus the deployment/provider checks described in the final readiness report. The existing `https://typingarena.click/` deployment passed its read-only smoke check. Only the dedicated branch push and draft-PR handoff are being performed; no DNS, hosting deployment, merge, analytics-provider, or AdSense mutation is performed.
