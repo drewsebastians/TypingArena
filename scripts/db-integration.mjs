@@ -277,7 +277,7 @@ try {
     );
     const capabilityAssessmentId = createdAssessment.rows[0].id;
 
-    const issue = async (type, id) => (await asUser(anonymousOwner, () =>
+    const issue = async (type, id, userId = anonymousOwner) => (await asUser(userId, () =>
       client.query("SELECT public.issue_resource_management_token($1,$2) r", [type, id]),
     )).rows[0].r;
     const teamCapability = await issue("team", capabilityTeamId);
@@ -417,6 +417,110 @@ try {
       )),
       "management_invalid",
     );
+
+    // 19b — capability retention cleanup and normal resource deletion.
+    const cleanupTeam = await asUser(recoveryUser, () =>
+      client.query("SELECT public.create_team($1) t", ["Capability cleanup team"]),
+    );
+    const cleanupTeamId = cleanupTeam.rows[0].t.id;
+    const cleanupCustom = await asUser(recoveryUser, () =>
+      client.query("SELECT public.create_custom_test($1::jsonb) id", [
+        JSON.stringify({ title: "Capability cleanup custom", language: "en", body: "A live custom cleanup passage.", visibility: "private" }),
+      ]),
+    );
+    const cleanupCustomId = cleanupCustom.rows[0].id;
+    const cleanupAssessment = await asUser(recoveryUser, () =>
+      client.query(
+        "insert into public.assessments (owner_id,title,modules) values ($1,$2,$3::jsonb) returning id",
+        [recoveryUser, "Capability Cleanup Assessment", JSON.stringify([{ id: "module-1", mode: "sprint", language: "en", duration_sec: 30 }])],
+      ),
+    );
+    const cleanupAssessmentId = cleanupAssessment.rows[0].id;
+    const liveTeamCapability = await issue("team", cleanupTeamId, recoveryUser);
+    const liveCustomCapability = await issue("custom", cleanupCustomId, recoveryUser);
+    const liveAssessmentCapability = await issue("assessment", cleanupAssessmentId, recoveryUser);
+
+    const liveValidation = await asUser(recoveryUser, async () => {
+      const results = [];
+      for (const [type, id, token] of [
+        ["team", cleanupTeamId, liveTeamCapability.token],
+        ["custom", cleanupCustomId, liveCustomCapability.token],
+        ["assessment", cleanupAssessmentId, liveAssessmentCapability.token],
+      ]) {
+        const result = await client.query(
+          "select public.validate_resource_management_token($1,$2,$3) r",
+          [type, id, token],
+        );
+        results.push(result.rows[0].r.resource_id === id);
+      }
+      return results;
+    });
+    ok("active capabilities remain valid before cleanup", liveValidation.every(Boolean));
+
+    const oldRevoked = await issue("custom", capabilityCustomId, recoveryUser);
+    await asUser(recoveryUser, () =>
+      client.query("select public.revoke_resource_management_token('custom',$1)", [capabilityCustomId]),
+    );
+    await client.query(
+      "update public.resource_capabilities set revoked_at=now()-interval '31 days' where resource_type='custom' and resource_id=$1 and token_hash=digest($2,'sha256')",
+      [capabilityCustomId, oldRevoked.rows[0].r.token],
+    );
+
+    const orphanIds = [crypto.randomUUID(), `ORPHAN${Date.now().toString(36)}`, crypto.randomUUID()];
+    await client.query(
+      `insert into public.resource_capabilities (resource_type, resource_id, owner_id, token_hash)
+       values ('team',$1,$4,digest('orphan-team','sha256')),
+              ('custom',$2,$4,digest('orphan-custom','sha256')),
+              ('assessment',$3,$4,digest('orphan-assessment','sha256'))`,
+      [...orphanIds, recoveryUser],
+    );
+
+    await client.query("select public.purge_expired()");
+    const afterPurge = await client.query(
+      `select resource_type, resource_id, count(*)::int count
+         from public.resource_capabilities
+        where resource_id = any($1::text[])
+        group by resource_type, resource_id`,
+      [[capabilityTeamId, capabilityCustomId, ...orphanIds]],
+    );
+    ok("scheduled cleanup removes expired capabilities", !afterPurge.rows.some((r) => r.resource_id === capabilityTeamId));
+    ok("scheduled cleanup removes old revoked capabilities", !afterPurge.rows.some((r) => r.resource_id === capabilityCustomId));
+    ok("scheduled cleanup removes true orphans for every resource type", orphanIds.every((id) => !afterPurge.rows.some((r) => r.resource_id === id)));
+    const liveRows = await client.query(
+      "select count(*)::int count from public.resource_capabilities where resource_id = any($1::text[]) and revoked_at is null and expires_at > now()",
+      [[cleanupTeamId, cleanupCustomId, cleanupAssessmentId]],
+    );
+    ok("scheduled cleanup preserves active capabilities for live resources", Number(liveRows.rows[0].count) === 3);
+
+    await asUser(recoveryUser, () =>
+      client.query("insert into public.assignments (team_id,title,kind,payload,created_by) values ($1,'Cleanup assignment','sprint','{}'::jsonb,$2)", [cleanupTeamId, recoveryUser]),
+    );
+    const cleanupChildren = await client.query(
+      `select
+         (select count(*) from public.team_members where team_id=$1) members,
+         (select count(*) from public.assignments where team_id=$1) assignments,
+         (select count(*) from public.resource_capabilities where resource_type='team' and resource_id=$1::text) capabilities`,
+      [cleanupTeamId],
+    );
+    ok("live Team has child rows and a capability before deletion", Number(cleanupChildren.rows[0].members) >= 1 && Number(cleanupChildren.rows[0].assignments) === 1 && Number(cleanupChildren.rows[0].capabilities) === 1);
+    await asUser(recoveryUser, () => client.query("delete from public.teams where id=$1", [cleanupTeamId]));
+    const cleanupTeamGone = await client.query(
+      `select
+         (select count(*) from public.teams where id=$1) teams,
+         (select count(*) from public.team_members where team_id=$1) members,
+         (select count(*) from public.assignments where team_id=$1) assignments,
+         (select count(*) from public.resource_capabilities where resource_type='team' and resource_id=$1::text) capabilities`,
+      [cleanupTeamId],
+    );
+    ok("normal Team delete cascades children and removes its capability", Object.values(cleanupTeamGone.rows[0]).every((value) => Number(value) === 0));
+
+    await asUser(recoveryUser, () => client.query("delete from public.custom_tests where id=$1", [cleanupCustomId]));
+    await asUser(recoveryUser, () => client.query("delete from public.assessments where id=$1", [cleanupAssessmentId]));
+    const cleanupResourcesGone = await client.query(
+      "select count(*)::int count from public.resource_capabilities where resource_id = any($1::text[])",
+      [[cleanupCustomId, cleanupAssessmentId]],
+    );
+    ok("normal Custom and Assessment deletes remove their capabilities", Number(cleanupResourcesGone.rows[0].count) === 0);
 
     await asUser(recoveryUser, () => client.query("select public.delete_my_shared_data()"));
     const deletedShared = await client.query(
