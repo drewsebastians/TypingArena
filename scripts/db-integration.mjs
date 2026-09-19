@@ -483,8 +483,16 @@ try {
         group by resource_type, resource_id`,
       [[capabilityTeamId, capabilityCustomId, ...orphanIds]],
     );
-    ok("scheduled cleanup removes expired capabilities", !afterPurge.rows.some((r) => r.resource_id === capabilityTeamId));
-    ok("scheduled cleanup removes old revoked capabilities", !afterPurge.rows.some((r) => r.resource_id === capabilityCustomId));
+    const removedTargetRows = await client.query(
+      `select
+         (select count(*)::int from public.resource_capabilities
+           where resource_type='team' and resource_id=$1 and token_hash=digest($2,'sha256')) expired_count,
+         (select count(*)::int from public.resource_capabilities
+           where resource_type='custom' and resource_id=$3 and token_hash=digest($4,'sha256')) revoked_count`,
+      [capabilityTeamId, expiring.rows[0].r.token, capabilityCustomId, oldRevoked.token],
+    );
+    ok("scheduled cleanup removes expired capabilities", Number(removedTargetRows.rows[0].expired_count) === 0);
+    ok("scheduled cleanup removes old revoked capabilities", Number(removedTargetRows.rows[0].revoked_count) === 0);
     ok("scheduled cleanup removes true orphans for every resource type", orphanIds.every((id) => !afterPurge.rows.some((r) => r.resource_id === id)));
     const liveRows = await client.query(
       "select count(*)::int count from public.resource_capabilities where resource_id = any($1::text[]) and revoked_at is null and expires_at > now()",
