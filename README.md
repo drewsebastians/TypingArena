@@ -107,11 +107,14 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
    `0010_anon_assessment_probe_grant.sql`, `0011_assessments_policy_probe_grant.sql`,
    `0012_pgcrypto_search_path_fix.sql`, `0013_migrate_conflict_target_fix.sql`,
    `0014_assignment_admin_policy_fix.sql`, `0015_anonymous_identity_capabilities.sql`,
-   `0016_public_board_privacy.sql`.
+   `0016_public_board_privacy.sql`, `0017_capability_retention_cleanup.sql`.
 3. Enable Anonymous Sign-Ins in Supabase Auth and set Site URL to your origin.
    The product does not expose email login, password, or magic-link UI.
 4. Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-5. Schedule `select purge_expired();` daily (pg_cron).
+5. Schedule `select purge_expired();` daily (pg_cron). This also removes expired
+   capabilities, revoked capabilities older than 30 days, and capabilities for
+   resources that no longer exist; supported resource deletes remove their
+   capabilities immediately.
 6. Optional: `supabase functions deploy tournament-api` for the Tournament API;
    mint keys by inserting sha256(key) hashes into `public.api_keys`.
 
