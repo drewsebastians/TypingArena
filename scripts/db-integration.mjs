@@ -463,7 +463,7 @@ try {
     );
     await client.query(
       "update public.resource_capabilities set revoked_at=now()-interval '31 days' where resource_type='custom' and resource_id=$1 and token_hash=digest($2,'sha256')",
-      [capabilityCustomId, oldRevoked.rows[0].r.token],
+      [capabilityCustomId, oldRevoked.token],
     );
 
     const orphanIds = [crypto.randomUUID(), `ORPHAN${Date.now().toString(36)}`, crypto.randomUUID()];
