@@ -62,3 +62,13 @@ begin
           select 1 from public.assessments a where a.id::text = c.resource_id
         ));
 end; $$;
+
+-- These SECURITY DEFINER maintenance functions delete rows. PostgreSQL grants
+-- EXECUTE to PUBLIC by default, so expose them only to the maintenance role.
+revoke all on function public.purge_expired() from public, anon, authenticated;
+grant execute on function public.purge_expired() to service_role;
+
+-- Keep the original challenge-only entry point safe as well. It remains for
+-- compatibility with any existing owner-managed scheduler.
+revoke all on function public.purge_expired_challenges() from public, anon, authenticated;
+grant execute on function public.purge_expired_challenges() to service_role;

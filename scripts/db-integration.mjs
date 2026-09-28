@@ -111,6 +111,25 @@ try {
   await client.connect();
   console.log("connected to local backend");
 
+  const maintenanceAcl = await client.query(`
+    select
+      has_function_privilege('anon', 'public.purge_expired()', 'EXECUTE') anon_purge,
+      has_function_privilege('authenticated', 'public.purge_expired()', 'EXECUTE') authenticated_purge,
+      has_function_privilege('service_role', 'public.purge_expired()', 'EXECUTE') service_purge,
+      has_function_privilege('anon', 'public.purge_expired_challenges()', 'EXECUTE') anon_challenges,
+      has_function_privilege('authenticated', 'public.purge_expired_challenges()', 'EXECUTE') authenticated_challenges,
+      has_function_privilege('service_role', 'public.purge_expired_challenges()', 'EXECUTE') service_challenges,
+      has_function_privilege('anon', 'public.purge_resource_capabilities_on_delete()', 'EXECUTE') anon_trigger,
+      has_function_privilege('authenticated', 'public.purge_resource_capabilities_on_delete()', 'EXECUTE') authenticated_trigger
+  `);
+  const acl = maintenanceAcl.rows[0];
+  ok(
+    "maintenance functions are restricted to service_role",
+    !acl.anon_purge && !acl.authenticated_purge && acl.service_purge &&
+      !acl.anon_challenges && !acl.authenticated_challenges && acl.service_challenges &&
+      !acl.anon_trigger && !acl.authenticated_trigger,
+  );
+
   const userA = await createUser("user-a@test.local");
   const userB = await createUser("user-b@test.local");
 
