@@ -43,7 +43,7 @@ multiplayer codes and custom-test shares are origin-relative — they inherit
 
 | # | Action | Where | Notes |
 |---|--------|-------|-------|
-| 11 | Schedule `select public.purge_expired();` daily (pg_cron or external cron) | Supabase | Clears expired custom tests + friend challenges; mark done before full launch |
+| 11 | Schedule `select public.purge_expired();` daily (pg_cron or external cron) | Supabase | Clears expired custom tests/friend challenges, expired capabilities, old revoked capabilities, and true-orphan capabilities; supported resource deletes remove capabilities immediately |
 | 12 | Tournament API is OPTIONAL — deploy only if intentionally activating: `supabase functions deploy tournament-api` | Supabase CLI | Spec: `docs/api/openapi.yaml`; keys stored hashed in `public.api_keys`; no UI depends on it |
 
 ## Verification after configuration
