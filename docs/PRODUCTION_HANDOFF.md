@@ -51,4 +51,3 @@ The recovery sequence is:
 The [external action register](closure/EXTERNAL_ACTION_REGISTER.md) tracks
 optional provider integrations and post-launch measurement or human validation.
 Those items are not blockers for the active production deployment.
-

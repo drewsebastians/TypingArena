@@ -149,4 +149,3 @@ Manual, once backend is connected (use disposable anonymous test sessions):
   neutralized, write `0018` or later to reverse its effect explicitly.
 - Keep the previous GitHub Pages deployment available via the Pages UI
   history while validating a new release.
-

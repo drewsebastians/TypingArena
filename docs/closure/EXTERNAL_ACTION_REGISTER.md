@@ -42,4 +42,3 @@ approval, hosted result, or strategic metric is claimed without evidence.
 
 For current production facts and environment recovery, see
 [`docs/PRODUCTION_HANDOFF.md`](../PRODUCTION_HANDOFF.md).
-
