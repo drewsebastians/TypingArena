@@ -1,12 +1,16 @@
 # Production Launch Runbook
 
-Operational source of truth for TypingArena's first production launch.
-Companion documents: `docs/PRODUCTION_HANDOFF.md` (checklist),
+Operational runbook for first launch, environment recreation, and disaster
+recovery. Production is currently active at `https://typingarena.click/`; use
+this runbook when creating or recovering an environment, not as a list of
+current launch blockers. Companion documents: `docs/PRODUCTION_HANDOFF.md`
+(current state and recovery summary),
 `docs/PRODUCTION_SMOKE_MATRIX.md` (route matrix), `docs/ADR-004-trust-model.md`
 (trust boundary), `docs/FINAL_ENGINEERING_FREEZE_EVIDENCE.md` (freeze proof).
 
-Current frozen main at time of writing: `936ee1e` → landed line
-`0349d5b` (PR #1). Always re-check `git log -1 origin/main` before executing.
+For any recovery, start from the current `origin/main` and verify the migration
+chain before making environment changes. Current production is migrated through
+`0017_capability_retention_cleanup.sql`.
 
 ---
 
@@ -16,7 +20,7 @@ Current frozen main at time of writing: `936ee1e` → landed line
 |---|---|
 | Repository | push access to `drewsebastians/TypingArena`; GitHub Actions enabled |
 | Supabase | account able to create the PRODUCTION project (not a dev copy) |
-| Domain decision | either GitHub Pages project URL (`https://<user>.github.io/<repo>`) or a custom HTTPS origin — this choice controls `NEXT_PUBLIC_SITE_URL`, base path, and DNS steps (§D) |
+| Domain decision | Current production uses `https://typingarena.click/`; this choice controls `NEXT_PUBLIC_SITE_URL`, base path, and DNS steps (§D) |
 | Anonymous Auth | Anonymous Sign-Ins enabled in the production Supabase project |
 | Secrets scope | only PUBLIC (`NEXT_PUBLIC_*`) values are used by the site build; never place service-role keys in browser-facing configuration |
 
@@ -28,11 +32,11 @@ Current frozen main at time of writing: `936ee1e` → landed line
 2. Apply migrations from a clean checkout:
    ```bash
    supabase link --project-ref <ref>
-   supabase db push            # applies 0001→0016 additively, in order
+   supabase db push            # applies 0001→0017 additively, in order
    ```
    The chain is additive and rerunnable-from-clean. NEVER run `db reset`
    against production.
-3. Verify: Dashboard → Database → Migrations lists 0001…0016 as applied;
+3. Verify: Dashboard → Database → Migrations lists 0001…0017 as applied;
    Table Editor shows `attempts`, `teams`, `assignments`,
    `assignment_completions`, `assessments`, `assessment_results`, `rooms`,
    `room_results`, `custom_tests`, `friend_challenges(+results)`, `profiles`,
@@ -40,7 +44,9 @@ Current frozen main at time of writing: `936ee1e` → landed line
 4. Auth → Providers: enable Anonymous Sign-Ins. Auth → URL configuration:
    Site URL = production origin. Email login and magic-link UI are not part of
    this product flow.
-5. Scheduled cleanup: enable `pg_cron`, then
+5. Scheduled cleanup: inspect existing schedules first. The active production
+   project has one daily purge at `17 3 * * *`; do not create a duplicate. For a
+   new environment with no purge schedule, enable `pg_cron`, then
    ```sql
    select cron.schedule('typingarena-purge', '17 3 * * *',
      'select public.purge_expired();');
@@ -66,8 +72,9 @@ may keep `GITHUB_PAGES=true`; `next.config.ts` derives the emitted path from
 
 | Mode | Env | Base path | Notes |
 |---|---|---|---|
-| GitHub Pages project site (current demo) | `GITHUB_PAGES=true`, site URL `https://<user>.github.io/<repo>` | `/repo` derived from the URL | Assets/canonical/sitemap already verified live at `https://drewsebastians.github.io/TypingArena` |
-| Custom domain / Vercel-class host | `NEXT_PUBLIC_SITE_URL=https://<domain>` | empty for a root domain | For GitHub Pages, configure the custom domain through `GitHub repository → Settings → Pages → Custom domain` (`typingarena.click`) |
+| GitHub Pages project site (alternate/legacy origin) | `GITHUB_PAGES=true`, site URL `https://<user>.github.io/<repo>` | `/repo` derived from the URL | Use only when intentionally creating a project-site deployment; this is not the current canonical origin |
+| Custom domain on GitHub Pages (current production) | `NEXT_PUBLIC_SITE_URL=https://typingarena.click` | empty for a root domain | The production origin is `https://typingarena.click/`; configure the Pages custom domain for a recreated environment |
+| Other root host | `NEXT_PUBLIC_SITE_URL=https://<domain>` | empty for a root domain | Use the hosting provider's domain setup instructions |
 
 After switching: run the smoke script and verify sitemap/canonical flipped:
 ```bash
@@ -106,7 +113,8 @@ Automated (repeat any time):
 SITE_URL=https://<origin> node scripts/production-smoke.mjs
 ```
 Covers all routes, robots/sitemap contract, canonical, placeholders, JS chunk,
-static audio (37 checks; current demo passes 37/37).
+and static audio. Production closure on 2026-09-29 recorded 37/37 public checks
+and 26/26 live backend checks; see [the handoff](docs/PRODUCTION_HANDOFF.md).
 
 Manual, once backend is connected (use disposable anonymous test sessions):
 1. **Typing**: complete ordinary practice with the backend unavailable → local
@@ -138,6 +146,6 @@ Manual, once backend is connected (use disposable anonymous test sessions):
   offending commit on `main` and let CI re-prove.
 - NEVER roll back the production database destructively. Migrations are
   additive; forward-fix with a new migration instead. If a migration must be
-  neutralized, write `0015+` that reverses its effect explicitly.
+  neutralized, write `0018` or later to reverse its effect explicitly.
 - Keep the previous GitHub Pages deployment available via the Pages UI
   history while validating a new release.
