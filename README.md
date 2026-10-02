@@ -6,7 +6,7 @@
 
 Free-first • local-first practice • anonymous shared actions • **no AI inference at runtime** • English + Bahasa Indonesia.
 
-Live: https://drewsebastians.github.io/TypingArena/
+Live: https://typingarena.click/
 
 ---
 
@@ -96,7 +96,11 @@ builds (`DEPLOY_TARGET=production node scripts/check-production-readiness.mjs`)
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set. Optional: PostHog/GA4 keys
 (consent-gated), AdSense client id. Never commit secrets.
 
-## Shared backend setup (one-time operator step)
+## Shared backend setup (environment creation or recovery)
+
+Production is active at `https://typingarena.click/`. Use these steps only when
+creating or recovering an environment; the current production state is recorded
+in [`docs/PRODUCTION_HANDOFF.md`](docs/PRODUCTION_HANDOFF.md).
 
 1. Create a free Supabase project.
 2. Apply migrations in order: `supabase/migrations/0001_init.sql`,
@@ -160,7 +164,7 @@ module sequence from their invite (with not-open/revoked/expired states);
 multiplayer races are started/rematched only by the host token holder with
 results recomputed from evidence; friend results flow through a validating
 rate-limited RPC. The full threat model and persistence matrix live in
-`docs/ADR-004-trust-model.md`; launch-blocking external actions in
+`docs/ADR-004-trust-model.md`; current production state and recovery instructions in
 `docs/PRODUCTION_HANDOFF.md`.
 This is a materially stronger boundary than trusting the browser — while still
 being heuristic anti-cheat, not formal proctoring.
@@ -182,13 +186,13 @@ state — integration is complete either way.
 
 ## Testing
 
-- **166 unit/component tests** (Vitest): scoring, alignment, corrections,
+- **175 unit/component tests** (Vitest; latest local run): scoring, alignment, corrections,
   integrity/burst, Jakarta-day math, daily determinism, endless stream,
   playback reducer, streaks, skill matrix, corpus+audio-manifest consistency,
   sync evidence/merge, career bands, season math, sanitization, engine timer
   semantics, paste blocking, versioning.
-- **30 Playwright E2E scenarios × desktop + mobile** (60 project cases; 59
-  passes + 1 intentional desktop skip): full-clock sprints, 5-min HUD,
+- **Playwright E2E**: latest production-closure validation (PR #19) reported
+  73 passed and 5 intentional skips. Coverage includes full-clock sprints, 5-min HUD,
   untouched-text accuracy, static audio resolution (EN/ID .wav), transcription
   flow, honest degradation of shared features offline, library filtering,
   career track list, keyboard reachability, robots/sitemap hygiene.
@@ -218,7 +222,7 @@ state — integration is complete either way.
 - `docs/ADR-004-trust-model.md` — explicit ranked-integrity trust boundary
 - `docs/LICENSES.md` — content/audio rights record (closed: Piper MIT)
 - `docs/api/openapi.yaml` — Tournament API v1 specification
-- `docs/PRODUCTION_HANDOFF.md` — external launch actions (the only remaining work)
+- `docs/PRODUCTION_HANDOFF.md` — current production state and environment recovery
 - `BLUEPRINT_COMPLETION_REPORT.md` — historical pre-closure status matrix
 
 ## Contributing
@@ -232,3 +236,4 @@ before submitting.
 Code: ISC. Content/audio: original works; audio generated with MIT-licensed
 Piper voices — redistribution permitted including commercial use
 (`docs/LICENSES.md`).
+
