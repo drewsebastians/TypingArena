@@ -1,15 +1,20 @@
 # First-Week Strategic Validation
 
-Status: READY FOR REAL CONSENTED TRAFFIC
+Status: DEFERRED — OWNER DECISION (2026-10-30)
 
-This is the executable first-week measurement specification for the live
+The owner has chosen not to configure behavioral analytics or collect a
+consented product baseline for now. Retain this as a future measurement
+specification; do not execute provider setup, first-week baseline, or retention
+reviews unless the owner reopens the decision.
+
+This retained document is the first-week measurement specification for the live
 TypingArena release. It tests the existing thesis — **WPM acquires; audio
 differentiates** — without changing product strategy or inventing targets.
 
 ## Current measurement state
 
-- Production analytics provider: disabled/unconfigured at the time of the
-  post-launch audit.
+- Production analytics provider: remains disabled/unconfigured by owner
+  decision; no PostHog or GA4 keys should be added.
 - Runtime behavior with consent off: ordinary practice works; no optional
   provider requests or analytics-queue writes are permitted.
 - Runtime behavior with a configured provider: forwarding is allowed only after

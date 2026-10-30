@@ -1,5 +1,11 @@
 # Analytics Consent Checklist
 
+## Current disposition (2026-10-30)
+
+The owner chose not to enable PostHog or GA4 behavioral analytics for now.
+Keep provider keys unset and retain the existing consent protections. This
+checklist is for a future activation only if the owner reopens that decision.
+
 ## Prerequisites
 
 - Owner decision on PostHog, GA4, or no analytics at launch.

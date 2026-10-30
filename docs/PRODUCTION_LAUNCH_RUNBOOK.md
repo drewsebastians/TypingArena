@@ -81,14 +81,16 @@ After switching: run the smoke script and verify sitemap/canonical flipped:
 SITE_URL=https://<final-origin> node scripts/production-smoke.mjs
 ```
 
-## E. Analytics / consent
+## E. Product analytics (deferred)
 
-PostHog/GA4 initialize ONLY after the visitor grants analytics consent
-(banner on first visit). With keys configured verify: network tab shows the
-provider loading after "Accept", never before; payloads contain counters and
-event names only — no typed text, keystrokes, answers, emails, tokens, or
-host secrets (unit-tested in `tests/analytics.test.ts`). Absence of keys is
-non-breaking by design.
+Owner decision (2026-10-30): do not configure PostHog or GA4 behavioral
+analytics for now. Keep both provider keys unset and preserve the existing
+consent gating. The app remains functional without analytics keys.
+
+Do not run the first-week behavioral baseline or retention/cross-mode review
+unless the owner reopens this decision. If reopened, first record the provider,
+data region, retention and privacy review, then follow the consent checks in
+[`owner-activation/04_ANALYTICS_CONSENT_CHECKLIST.md`](owner-activation/04_ANALYTICS_CONSENT_CHECKLIST.md).
 
 ## F. Ads
 
@@ -99,12 +101,27 @@ assessment flow contain ZERO ad code. If approved: set the client secret,
 redeploy, confirm real markup appears only in reserved slots. Add `ads.txt`
 at the domain root ONLY with the publisher ID AdSense actually issues.
 
-## G. Search
+## G. Search Console — priority
 
-1. Search Console → verify the production property (DNS or HTML file).
-2. Submit `https://<origin>/sitemap.xml`.
-3. Inspect canonical homepage + one EN page + one ID page ("Page indexing"
-   report); confirm `/progress` is excluded (robots Disallow + noindex).
+Search visibility is a priority. Use Google Search Console directly; GSC Wizard
+is not the operating path and will not be renewed. As of 2026-10-30, property
+verification and sitemap submission are not confirmed.
+
+1. Open Search Console with the owner's Google account and inspect existing
+   properties before adding anything. Reuse the verified URL-prefix property
+   `https://typingarena.click/` or domain property `sc-domain:typingarena.click`
+   if one already exists.
+2. If neither property is verified, verify ownership through DNS or the
+   documented HTML-file method. This requires access to the domain or hosting
+   settings; do not claim verification until Search Console confirms it.
+3. Submit the published sitemap `https://typingarena.click/sitemap.xml`.
+4. Record the property type, submission date, sitemap status, last-read time,
+   and any warnings or errors.
+5. Inspect the canonical homepage, one English page (for example
+   `/typing-test`), and one Indonesian page (for example `/tes-mengetik`).
+   Confirm `/progress` remains excluded by robots Disallow and noindex.
+6. Review Search results performance after data is available. Sitemap
+   acceptance is not proof that URLs have been indexed.
 
 ## H. Production smoke tests
 
