@@ -46,8 +46,18 @@ The recovery sequence is:
 6. Deploy the Tournament API only if intentionally activating that optional
    interface. No product UI depends on it.
 
+## Current owner direction (2026-10-30)
+
+- Search visibility is a priority. Use direct Google Search Console for property
+  verification, sitemap submission, and indexing review. Do not renew GSC Wizard;
+  direct Search Console property verification and sitemap submission remain open.
+- Behavioral analytics are not planned for now. Leave PostHog and GA4 keys unset;
+  preserve the existing consent gating. The associated behavioral baseline and
+  retention review are deferred.
+- Neither choice blocks the active production deployment.
+
 ## External follow-up
 
-The [external action register](closure/EXTERNAL_ACTION_REGISTER.md) tracks
-optional provider integrations and post-launch measurement or human validation.
-Those items are not blockers for the active production deployment.
+The [external action register](closure/EXTERNAL_ACTION_REGISTER.md) tracks the
+current Search Console priority, deferred analytics choices, optional providers,
+and human validation.
