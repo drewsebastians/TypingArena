@@ -1,6 +1,10 @@
 # Strategic Validation Measurement Plan
 
-Status: POST-LAUNCH VALIDATION
+Status: DEFERRED — OWNER DECISION (2026-10-30)
+
+The owner chose not to activate PostHog or GA4 behavioral analytics or run a
+behavioral baseline for now. Keep this plan for future reference; execute it
+only if the owner reopens the decision.
 
 This plan turns the Ultimate Blueprint's strategic hypotheses into observable
 questions. It deliberately records the instrument and the decision rule, not
@@ -64,7 +68,7 @@ Release guardrails:
 - every reported metric includes its date range, route scope, consent scope,
   and sample size.
 
-Owner action after deployment: configure the approved PostHog or GA4 provider,
-confirm consent behavior in the hosted origin, and record the first real
-baseline in the launch log. Until then, strategic status remains
-POST-LAUNCH VALIDATION.
+Owner action if behavioral analytics are reconsidered: approve the provider and
+its retention/privacy terms, confirm consent behavior on the hosted origin, and
+record any first real baseline in the launch log. Until that decision is
+reopened, behavioral measurement remains DEFERRED by owner choice.
